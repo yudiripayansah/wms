@@ -1,7 +1,21 @@
 {
   "$schema": "https://schema.railpack.com",
   "packages": {
-    "php": "8.4"
+    "php": "8.2",
+    "node": "20"
   },
-  "buildAptPackages": ["bison", "re2c", "libgd-dev", "libpng-dev", "libjpeg62-turbo-dev", "libfreetype6-dev"]
+  "buildAptPackages": [
+    "bison",
+    "re2c",
+    "libgd-dev",
+    "libpng-dev",
+    "libjpeg62-turbo-dev",
+    "libfreetype6-dev",
+    "libzip-dev",
+    "libcurl4-openssl-dev",
+    "libxml2-dev",
+    "libssl-dev",
+    "libonig-dev",
+    "libicu-dev"
+  ]
 }
