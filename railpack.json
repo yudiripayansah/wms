@@ -12,7 +12,10 @@
     "libjpeg62-turbo-dev",
     "libfreetype6-dev",
     "libzip-dev",
-    "libxml2-dev"
+    "libxml2-dev",
+    "libicu-dev",
+    "libonig-dev",
+    "libssl-dev"
   ],
   "buildSteps": [
     {
