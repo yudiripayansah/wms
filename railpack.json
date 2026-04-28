@@ -1,7 +1,30 @@
 {
   "$schema": "https://schema.railpack.com",
   "packages": {
-    "php": "8.4"
+    "php": "8.4",
+    "node": "20"
   },
-  "buildAptPackages": ["bison", "re2c", "libgd-dev", "libpng-dev", "libjpeg62-turbo-dev", "libfreetype6-dev"]
+  "buildAptPackages": [
+    "bison",
+    "re2c",
+    "libgd-dev",
+    "libpng-dev",
+    "libjpeg62-turbo-dev",
+    "libfreetype6-dev",
+    "libzip-dev",
+    "libxml2-dev"
+  ],
+  "buildSteps": [
+    {
+      "name": "install-dependencies",
+      "commands": [
+        "npm ci --no-audit",
+        "npm run build",
+        "composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist"
+      ]
+    }
+  ],
+  "deploy": {
+    "startCommand": "php artisan storage:link --force && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=$PORT"
+  }
 }
