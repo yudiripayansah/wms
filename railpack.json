@@ -1,42 +1,21 @@
 {
   "$schema": "https://schema.railpack.com",
   "packages": {
-    "php": "8.4",
     "node": "20"
   },
   "buildAptPackages": [
-    "curl",
-    "unzip",
     "libgd-dev",
     "libpng-dev",
     "libjpeg62-turbo-dev",
     "libfreetype6-dev",
     "libzip-dev",
-    "libxml2-dev",
-    "libicu-dev",
-    "libonig-dev",
-    "libssl-dev"
+    "libicu-dev"
   ],
   "buildSteps": [
     {
-      "name": "install-php-extensions",
+      "name": "install-extra-extensions",
       "commands": [
-        "curl -sSLf https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions",
-        "chmod +x /usr/local/bin/install-php-extensions",
-        "install-php-extensions gd zip intl pdo_mysql bcmath opcache pcntl dom xml"
-      ]
-    },
-    {
-      "name": "build-frontend",
-      "commands": [
-        "npm ci --no-audit",
-        "npm run build"
-      ]
-    },
-    {
-      "name": "install-php-deps",
-      "commands": [
-        "composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist"
+        "install-php-extensions gd zip intl bcmath opcache pcntl"
       ]
     }
   ],
