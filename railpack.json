@@ -5,8 +5,8 @@
     "node": "20"
   },
   "buildAptPackages": [
-    "bison",
-    "re2c",
+    "curl",
+    "unzip",
     "libgd-dev",
     "libpng-dev",
     "libjpeg62-turbo-dev",
@@ -19,15 +19,28 @@
   ],
   "buildSteps": [
     {
-      "name": "install-dependencies",
+      "name": "install-php-extensions",
+      "commands": [
+        "curl -sSLf https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions",
+        "chmod +x /usr/local/bin/install-php-extensions",
+        "install-php-extensions gd zip intl pdo_mysql bcmath opcache pcntl dom xml"
+      ]
+    },
+    {
+      "name": "build-frontend",
       "commands": [
         "npm ci --no-audit",
-        "npm run build",
+        "npm run build"
+      ]
+    },
+    {
+      "name": "install-php-deps",
+      "commands": [
         "composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist"
       ]
     }
   ],
   "deploy": {
-    "startCommand": "php artisan storage:link --force && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=$PORT"
+    "startCommand": "php artisan storage:link --force && for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do php artisan migrate:status >/dev/null 2>&1 && break; echo \"DB not ready ($i/15), retrying in 2s...\"; sleep 2; done; php artisan migrate --force && php artisan db:seed --class=UserSeeder --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=$PORT"
   }
 }
