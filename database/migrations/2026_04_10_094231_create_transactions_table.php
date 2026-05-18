@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('session_id')->nullable();
 
-            $table->foreignId('kode_barang')->constrained()->cascadeOnDelete();
+            $table->string('kode_barang');
+            $table->foreign('kode_barang')->references('kode_barang')->on('products')->onDelete('cascade');
 
             $table->integer('qty');
             $table->string('location')->nullable();
