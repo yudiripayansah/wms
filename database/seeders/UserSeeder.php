@@ -11,9 +11,28 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         User::firstOrCreate(
+            ['email' => 'superadmin@wms.com'],
+            [
+                'name'     => 'Super Admin',
+                'role'     => 'super_admin',
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        User::firstOrCreate(
             ['email' => 'admin@wms.com'],
             [
                 'name'     => 'Admin',
+                'role'     => 'admin',
+                'password' => Hash::make('password'),
+            ]
+        );
+
+        User::firstOrCreate(
+            ['email' => 'allocator@wms.com'],
+            [
+                'name'     => 'Allocator',
+                'role'     => 'allocator',
                 'password' => Hash::make('password'),
             ]
         );

@@ -3,16 +3,18 @@
 namespace App\Filament\Resources\AllocationResource\RelationManagers;
 
 use App\Imports\AllocationItemImport;
+use App\Models\Product;
 use App\Models\Stock;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
+use Filament\Forms\Set;
 use Filament\Notifications\Notification;
-use Filament\Resources\Form;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Resources\Table;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -24,20 +26,20 @@ class ItemsRelationManager extends RelationManager
 
     protected static ?string $title = 'Daftar Produk Allocation';
 
-    public static function form(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form
             ->schema([
                 Select::make('kode_barang')
                     ->label('Kode Barang')
-                    ->relationship('product', 'kode_barang')
+                    ->options(fn() => Product::orderBy('kode_barang')->pluck('kode_barang', 'kode_barang'))
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->reactive()
-                    ->afterStateHydrated(function ($state, callable $set) {
+                    ->live()
+                    ->afterStateHydrated(function (?string $state, Set $set) {
                         if (! $state) return;
-                        $product = \App\Models\Product::where('kode_barang', $state)->first();
+                        $product = Product::where('kode_barang', $state)->first();
                         if ($product) {
                             $set('nama_barang', $product->nama_barang);
                             $set('colour', $product->colour);
@@ -49,17 +51,12 @@ class ItemsRelationManager extends RelationManager
                             $set('box', $stock->box);
                         }
                     })
-                    ->afterStateUpdated(function ($state, callable $set) {
-                        $product = \App\Models\Product::where('kode_barang', $state)->first();
-                        if ($product) {
-                            $set('nama_barang', $product->nama_barang);
-                            $set('colour', $product->colour);
-                            $set('size', $product->size);
-                        } else {
-                            $set('nama_barang', null);
-                            $set('colour', null);
-                            $set('size', null);
-                        }
+                    ->afterStateUpdated(function (?string $state, Set $set) {
+                        $product = $state ? Product::where('kode_barang', $state)->first() : null;
+                        $set('nama_barang', $product?->nama_barang);
+                        $set('colour', $product?->colour);
+                        $set('size', $product?->size);
+
                         $stock = $state ? Stock::where('kode_barang', $state)->orderByDesc('qty')->first() : null;
                         $set('location', $stock?->location);
                         $set('box', $stock?->box);
@@ -69,17 +66,13 @@ class ItemsRelationManager extends RelationManager
                 TextInput::make('colour')->disabled()->dehydrated(false),
                 TextInput::make('size')->disabled()->dehydrated(false),
 
-                TextInput::make('qty')
-                    ->numeric()
-                    ->required()
-                    ->minValue(1),
-
+                TextInput::make('qty')->numeric()->required()->minValue(1),
                 TextInput::make('location')->label('Location'),
                 TextInput::make('box')->label('Box'),
             ]);
     }
 
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
             ->columns([
@@ -96,11 +89,11 @@ class ItemsRelationManager extends RelationManager
 
                 Tables\Actions\Action::make('import_excel')
                     ->label('Import Excel')
-                    ->icon('heroicon-o-upload')
-                    ->color('secondary')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('gray')
                     ->modalHeading('Import Produk dari Excel')
-                    ->modalSubheading('Format kolom: kode_barang, qty. Kolom location & box opsional — jika kosong akan diisi otomatis dari data stok.')
-                    ->modalButton('Import')
+                    ->modalDescription('Format kolom: kode_barang, qty. Kolom location & box opsional — jika kosong akan diisi otomatis dari data stok.')
+                    ->modalSubmitActionLabel('Import')
                     ->form([
                         FileUpload::make('file')
                             ->label('File Excel (.xlsx)')
@@ -112,9 +105,9 @@ class ItemsRelationManager extends RelationManager
                             ])
                             ->required(),
                     ])
-                    ->action(function (array $data, RelationManager $livewire) {
+                    ->action(function (array $data) {
                         $path   = Storage::disk('public')->path($data['file']);
-                        $import = new AllocationItemImport($livewire->ownerRecord->id);
+                        $import = new AllocationItemImport($this->ownerRecord->id);
 
                         Excel::import($import, $path);
 

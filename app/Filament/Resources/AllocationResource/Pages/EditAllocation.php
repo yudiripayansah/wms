@@ -4,7 +4,7 @@ namespace App\Filament\Resources\AllocationResource\Pages;
 
 use App\Filament\Resources\AllocationResource;
 use App\Models\AllocationItem;
-use Filament\Pages\Actions\DeleteAction;
+use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditAllocation extends EditRecord
@@ -47,10 +47,10 @@ class EditAllocation extends EditRecord
         }
     }
 
-    protected function getActions(): array
+    protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()
+            Actions\DeleteAction::make()
                 ->visible(fn() => $this->record->status !== 'PROCESSED'),
         ];
     }

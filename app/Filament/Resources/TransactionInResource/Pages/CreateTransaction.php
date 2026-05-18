@@ -4,7 +4,6 @@ namespace App\Filament\Resources\TransactionInResource\Pages;
 
 use App\Filament\Resources\TransactionInResource;
 use App\Models\Stock;
-use Filament\Pages\Actions;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateTransaction extends CreateRecord

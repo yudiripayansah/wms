@@ -24,9 +24,11 @@ return new class extends Migration
             }
         });
 
+        Schema::disableForeignKeyConstraints();
         Schema::table('products', function (Blueprint $table) {
             $table->dropColumn(['qty', 'location', 'box']);
         });
+        Schema::enableForeignKeyConstraints();
     }
 
     public function down(): void

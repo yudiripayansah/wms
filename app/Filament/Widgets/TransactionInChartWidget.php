@@ -5,7 +5,6 @@ namespace App\Filament\Widgets;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
 
 class TransactionInChartWidget extends ChartWidget
 {
@@ -13,7 +12,7 @@ class TransactionInChartWidget extends ChartWidget
 
     protected static ?string $heading = 'Grafik Barang Masuk';
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected static ?string $maxHeight = '300px';
 
@@ -57,58 +56,60 @@ class TransactionInChartWidget extends ChartWidget
     {
         $query = Transaction::where('type', $type)->where('status', 'OK');
 
-        switch ($this->filter) {
-            case 'weekly':
-                $labels = [];
-                $data   = [];
-                for ($i = 11; $i >= 0; $i--) {
-                    $start  = Carbon::now()->subWeeks($i)->startOfWeek();
-                    $end    = Carbon::now()->subWeeks($i)->endOfWeek();
-                    $labels[] = $start->format('d/m');
-                    $data[]   = (clone $query)
-                        ->whereBetween('created_at', [$start, $end])
-                        ->sum('qty');
-                }
-                break;
+        return match ($this->filter) {
+            'weekly' => $this->buildWeeklyData($query),
+            'monthly' => $this->buildMonthlyData($query),
+            'yearly' => $this->buildYearlyData($query),
+            default => $this->buildDailyData($query),
+        };
+    }
 
-            case 'monthly':
-                $labels = [];
-                $data   = [];
-                for ($i = 11; $i >= 0; $i--) {
-                    $month    = Carbon::now()->subMonths($i);
-                    $labels[] = $month->format('M Y');
-                    $data[]   = (clone $query)
-                        ->whereYear('created_at', $month->year)
-                        ->whereMonth('created_at', $month->month)
-                        ->sum('qty');
-                }
-                break;
-
-            case 'yearly':
-                $labels = [];
-                $data   = [];
-                for ($i = 4; $i >= 0; $i--) {
-                    $year     = Carbon::now()->subYears($i)->year;
-                    $labels[] = (string) $year;
-                    $data[]   = (clone $query)
-                        ->whereYear('created_at', $year)
-                        ->sum('qty');
-                }
-                break;
-
-            default: // daily
-                $labels = [];
-                $data   = [];
-                for ($i = 29; $i >= 0; $i--) {
-                    $date     = Carbon::now()->subDays($i)->toDateString();
-                    $labels[] = Carbon::parse($date)->format('d/m');
-                    $data[]   = (clone $query)
-                        ->whereDate('created_at', $date)
-                        ->sum('qty');
-                }
-                break;
+    private function buildDailyData($query): array
+    {
+        $labels = [];
+        $data   = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $date     = Carbon::now()->subDays($i)->toDateString();
+            $labels[] = Carbon::parse($date)->format('d/m');
+            $data[]   = (clone $query)->whereDate('created_at', $date)->sum('qty');
         }
+        return [$labels, $data];
+    }
 
+    private function buildWeeklyData($query): array
+    {
+        $labels = [];
+        $data   = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $start    = Carbon::now()->subWeeks($i)->startOfWeek();
+            $end      = Carbon::now()->subWeeks($i)->endOfWeek();
+            $labels[] = $start->format('d/m');
+            $data[]   = (clone $query)->whereBetween('created_at', [$start, $end])->sum('qty');
+        }
+        return [$labels, $data];
+    }
+
+    private function buildMonthlyData($query): array
+    {
+        $labels = [];
+        $data   = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $month    = Carbon::now()->subMonths($i);
+            $labels[] = $month->format('M Y');
+            $data[]   = (clone $query)->whereYear('created_at', $month->year)->whereMonth('created_at', $month->month)->sum('qty');
+        }
+        return [$labels, $data];
+    }
+
+    private function buildYearlyData($query): array
+    {
+        $labels = [];
+        $data   = [];
+        for ($i = 4; $i >= 0; $i--) {
+            $year     = Carbon::now()->subYears($i)->year;
+            $labels[] = (string) $year;
+            $data[]   = (clone $query)->whereYear('created_at', $year)->sum('qty');
+        }
         return [$labels, $data];
     }
 }

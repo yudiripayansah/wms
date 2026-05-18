@@ -4,7 +4,6 @@ namespace App\Filament\Resources\TransactionOpnameResource\Pages;
 
 use App\Filament\Resources\TransactionOpnameResource;
 use App\Models\Stock;
-use Filament\Pages\Actions;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateTransaction extends CreateRecord
@@ -19,7 +18,6 @@ class CreateTransaction extends CreateRecord
             return;
         }
 
-        // OPNAME: set stok ke nilai persis
         Stock::updateOrCreate(
             [
                 'kode_barang' => $record->kode_barang,

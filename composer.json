@@ -7,7 +7,8 @@
     "require": {
         "php": "^8.4",
         "barryvdh/laravel-dompdf": "^3.1",
-        "filament/filament": "^2.7",
+        "cweagans/composer-patches": "^2.0",
+        "filament/filament": "^3.3",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
@@ -53,6 +54,14 @@
     "extra": {
         "laravel": {
             "dont-discover": []
+        },
+        "patches": {
+            "filament/support": {
+                "PHP 8.4: fix get_class(string) TypeError via id property guard": "patches/filament-support-php84-id-property.patch"
+            },
+            "filament/actions": {
+                "PHP 8.4: fix get_class(string) TypeError in action validation": "patches/filament-actions-php84-getclass.patch"
+            }
         }
     },
     "config": {
@@ -65,7 +74,8 @@
         },
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "cweagans/composer-patches": true
         }
     },
     "minimum-stability": "stable",

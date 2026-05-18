@@ -8,11 +8,11 @@ use App\Models\Allocation;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\Transaction;
+use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\View;
 use Filament\Notifications\Notification;
-use Filament\Pages\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -22,14 +22,14 @@ class ListTransactions extends ListRecords
 
     public array $transactionRows = [];
 
-    protected function getActions(): array
+    protected function getHeaderActions(): array
     {
         return [
             Action::make('importFromAllocation')
                 ->label('Import dari Allocation')
                 ->modalHeading('Import dari Allocation')
-                ->modalButton('Proses ke Transaction OUT')
-                ->color('secondary')
+                ->modalSubmitActionLabel('Proses ke Transaction OUT')
+                ->color('gray')
                 ->form([
                     Select::make('allocation_id')
                         ->label('Pilih Allocation')
@@ -51,10 +51,7 @@ class ListTransactions extends ListRecords
                     $allocation = Allocation::with('items')->findOrFail($data['allocation_id']);
 
                     if ($allocation->status !== 'CONFIRMED') {
-                        Notification::make()
-                            ->title('Allocation belum dikonfirmasi')
-                            ->danger()
-                            ->send();
+                        Notification::make()->title('Allocation belum dikonfirmasi')->danger()->send();
                         return;
                     }
 
@@ -94,7 +91,7 @@ class ListTransactions extends ListRecords
             Action::make('newTransaction')
                 ->label('New Barang Keluar')
                 ->modalHeading('Transaksi Barang Keluar')
-                ->modalButton('Proses Transaksi')
+                ->modalSubmitActionLabel('Proses Transaksi')
                 ->modalWidth('7xl')
                 ->form([
                     FileUpload::make('file')
@@ -104,9 +101,9 @@ class ListTransactions extends ListRecords
                         ->acceptedFileTypes([
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         ])
-                        ->reactive()
+                        ->live()
                         ->afterStateUpdated(function ($state, $livewire) {
-                            if (!$state) return;
+                            if (! $state) return;
                             ini_set('memory_limit', '512M');
                             $import = new TransactionInPreviewImport();
                             Excel::import($import, $state->getRealPath());

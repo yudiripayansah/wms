@@ -7,10 +7,10 @@ use App\Imports\TransactionInPreviewImport;
 use App\Models\Product;
 use App\Models\Stock;
 use App\Models\Transaction;
+use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\View;
 use Filament\Notifications\Notification;
-use Filament\Pages\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -18,16 +18,15 @@ class ListTransactions extends ListRecords
 {
     protected static string $resource = TransactionInResource::class;
 
-    // Public property — entangled by Alpine, sent deferred on submit
     public array $transactionRows = [];
 
-    protected function getActions(): array
+    protected function getHeaderActions(): array
     {
         return [
             Action::make('newTransaction')
                 ->label('New Barang Masuk')
                 ->modalHeading('Transaksi Barang Masuk')
-                ->modalButton('Proses Transaksi')
+                ->modalSubmitActionLabel('Proses Transaksi')
                 ->modalWidth('7xl')
                 ->form([
                     FileUpload::make('file')
@@ -37,9 +36,9 @@ class ListTransactions extends ListRecords
                         ->acceptedFileTypes([
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         ])
-                        ->reactive()
+                        ->live()
                         ->afterStateUpdated(function ($state, $livewire) {
-                            if (!$state) return;
+                            if (! $state) return;
                             ini_set('memory_limit', '512M');
                             $import = new TransactionInPreviewImport();
                             Excel::import($import, $state->getRealPath());

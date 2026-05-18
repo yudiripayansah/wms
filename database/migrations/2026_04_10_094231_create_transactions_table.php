@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('box')->nullable();
 
             $table->enum('status', ['OK', 'DECLINED'])->default('OK');
-            $table->enum('type', ['IN', 'OUT', 'OPNAME']);
+            $table->enum('type', ['IN', 'OUT', 'OPNAME', 'ADJUSTMENT']);
 
             $table->text('remarks')->nullable();
 

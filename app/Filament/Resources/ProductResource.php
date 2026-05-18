@@ -2,31 +2,56 @@
 
 namespace App\Filament\Resources;
 
+use App\Exports\ProductsExport;
 use App\Filament\Pages\ProductTransactionHistory;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Filament\Resources\ProductResource\RelationManagers\StocksRelationManager;
-use App\Models\Product;
-use Filament\Forms\Components\TextInput;
-use Filament\Resources\Form;
-use Filament\Resources\Resource;
-use Filament\Resources\Table;
-use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Actions\Action;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ProductsExport;
 use App\Imports\ProductsImport;
+use App\Models\Product;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Form;
 use Filament\Notifications\Notification;
+use Filament\Resources\Resource;
+use Filament\Tables;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-collection';
+    protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
     protected static ?string $navigationLabel = 'Master Produk';
     protected static ?string $navigationGroup = 'Master Data';
+
+    public static function canViewAny(): bool
+    {
+        return ! (auth()->user()?->isAllocator() ?? true);
+    }
+
+    public static function canCreate(): bool
+    {
+        return ! (auth()->user()?->isAllocator() ?? true);
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->isSuperAdmin() ?? false;
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -74,17 +99,15 @@ class ProductResource extends Resource
                     ->label('Total Qty')
                     ->sortable(),
                 TextColumn::make('price')
-                    ->formatStateUsing(fn($state) => 'Rp ' . number_format((float)$state, 0, ',', '.')),
+                    ->formatStateUsing(fn($state) => 'Rp ' . number_format((float) $state, 0, ',', '.')),
             ])
-            ->filters([
-                //
-            ])
+            ->filters([])
             ->actions([
                 Action::make('histori')
                     ->label('Histori')
                     ->icon('heroicon-o-clock')
-                    ->color('secondary')
-                    ->url(fn (Product $record) => ProductTransactionHistory::getUrl() . '?kode_barang=' . urlencode($record->kode_barang)),
+                    ->color('gray')
+                    ->url(fn(Product $record) => ProductTransactionHistory::getUrl() . '?kode_barang=' . urlencode($record->kode_barang)),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
@@ -92,11 +115,10 @@ class ProductResource extends Resource
                 Tables\Actions\DeleteBulkAction::make(),
             ])
             ->headerActions([
-
                 Action::make('export_excel')
                     ->label('Export Excel')
                     ->action(function () {
-                        return Excel::download(new ProductsExport, 'products.xlsx');
+                        return Excel::download(new ProductsExport(), 'products.xlsx');
                     }),
 
                 Action::make('export_pdf')
@@ -111,26 +133,23 @@ class ProductResource extends Resource
                             ->required()
                             ->directory('imports')
                             ->acceptedFileTypes([
-                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             ]),
                     ])
                     ->action(function (array $data) {
-
                         $import = new ProductsImport();
-
                         Excel::import($import, storage_path('app/public/' . $data['file']));
 
                         Notification::make()
                             ->title('Import Selesai')
                             ->body(
                                 "Insert: {$import->success}\n" .
-                                    "Update: {$import->updated}\n" .
-                                    "Failed: {$import->failed}"
+                                "Update: {$import->updated}\n" .
+                                "Failed: {$import->failed}"
                             )
                             ->success()
                             ->send();
                     }),
-
             ]);
     }
 
@@ -144,9 +163,9 @@ class ProductResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListProducts::route('/'),
+            'index'  => Pages\ListProducts::route('/'),
             'create' => Pages\CreateProduct::route('/create'),
-            'edit' => Pages\EditProduct::route('/{record}/edit'),
+            'edit'   => Pages\EditProduct::route('/{record}/edit'),
         ];
     }
 }

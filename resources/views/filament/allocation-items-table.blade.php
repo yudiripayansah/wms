@@ -9,7 +9,7 @@
 
     window.allocationItemsTable = function (wire) {
         return {
-            rows:       wire.entangle('allocationRows').defer,
+            rows:       wire.entangle('allocationRows'),
             productMap: window.__allocProductMap,
             stockMap:   window.__allocStockMap,
 
@@ -45,7 +45,7 @@
 <div x-data="allocationItemsTable($wire)" style="min-width:0; width:100%;">
 
     <div class="flex items-center justify-between mb-3">
-        <span class="text-sm text-gray-500" x-text="rows.length + ' item'"></span>
+        <span class="text-sm text-gray-500 dark:text-gray-400" x-text="rows.length + ' item'"></span>
         <button
             type="button"
             x-on:click="addRow()"
@@ -55,24 +55,24 @@
         </button>
     </div>
 
-    <div class="border border-gray-200 rounded-lg" style="overflow-x:auto; overflow-y:auto; max-height:460px; width:100%;">
+    <div class="border border-gray-200 dark:border-gray-700 rounded-lg" style="overflow-x:auto; overflow-y:auto; max-height:460px; width:100%;">
         <div style="min-width:600px;">
         <table class="w-full text-xs border-collapse">
-            <thead class="bg-gray-50 sticky top-0 z-10">
-                <tr class="border-b border-gray-200">
-                    <th class="px-1 py-2 text-left text-gray-500 font-semibold" style="width:28px">#</th>
-                    <th class="px-1 py-2 text-left text-gray-500 font-semibold" style="width:140px">Kode Barang</th>
-                    <th class="px-1 py-2 text-left text-gray-500 font-semibold">Nama Barang</th>
-                    <th class="px-1 py-2 text-left text-gray-500 font-semibold" style="width:60px">Qty</th>
-                    <th class="px-1 py-2 text-left text-gray-500 font-semibold" style="width:90px">Lokasi</th>
-                    <th class="px-1 py-2 text-left text-gray-500 font-semibold" style="width:70px">Box</th>
+            <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                <tr class="border-b border-gray-200 dark:border-gray-600">
+                    <th class="px-1 py-2 text-left text-gray-500 dark:text-gray-300 font-semibold" style="width:28px">#</th>
+                    <th class="px-1 py-2 text-left text-gray-500 dark:text-gray-300 font-semibold" style="width:140px">Kode Barang</th>
+                    <th class="px-1 py-2 text-left text-gray-500 dark:text-gray-300 font-semibold">Nama Barang</th>
+                    <th class="px-1 py-2 text-left text-gray-500 dark:text-gray-300 font-semibold" style="width:60px">Qty</th>
+                    <th class="px-1 py-2 text-left text-gray-500 dark:text-gray-300 font-semibold" style="width:90px">Lokasi</th>
+                    <th class="px-1 py-2 text-left text-gray-500 dark:text-gray-300 font-semibold" style="width:70px">Box</th>
                     <th class="px-1 py-2" style="width:28px"></th>
                 </tr>
             </thead>
             <tbody>
                 <template x-for="(row, index) in rows" :key="index">
-                    <tr class="border-b border-gray-100 bg-white hover:bg-gray-50">
-                        <td class="px-2 py-1 text-gray-400 text-center" x-text="index + 1"></td>
+                    <tr class="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td class="px-2 py-1 text-gray-400 dark:text-gray-500 text-center" x-text="index + 1"></td>
 
                         <td class="px-1 py-1">
                             <input
@@ -80,13 +80,13 @@
                                 x-model="rows[index].kode_barang"
                                 x-on:change="lookupProduct(index)"
                                 list="alloc-product-codes"
-                                class="w-full border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400"
                                 placeholder="Kode..."
                             />
                         </td>
 
                         <td class="px-2 py-1 max-w-xs">
-                            <span x-text="row.nama_barang" class="text-gray-600 block truncate"></span>
+                            <span x-text="row.nama_barang" class="text-gray-600 dark:text-gray-300 block truncate"></span>
                         </td>
 
                         <td class="px-1 py-1">
@@ -94,7 +94,7 @@
                                 type="number"
                                 x-model.number="rows[index].qty"
                                 min="0"
-                                class="w-full border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400"
                             />
                         </td>
 
@@ -102,7 +102,7 @@
                             <input
                                 type="text"
                                 x-model="rows[index].location"
-                                class="w-full border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400"
                                 placeholder="Lokasi"
                             />
                         </td>
@@ -111,7 +111,7 @@
                             <input
                                 type="text"
                                 x-model="rows[index].box"
-                                class="w-full border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                                class="w-full border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400"
                                 placeholder="Box"
                             />
                         </td>
@@ -128,7 +128,7 @@
                 </template>
 
                 <tr x-show="rows.length === 0">
-                    <td colspan="7" class="px-4 py-10 text-center text-gray-400">
+                    <td colspan="7" class="px-4 py-10 text-center text-gray-400 dark:text-gray-500">
                         Belum ada item. Upload file Excel atau klik "+ Tambah Item".
                     </td>
                 </tr>

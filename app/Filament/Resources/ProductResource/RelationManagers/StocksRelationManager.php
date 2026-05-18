@@ -3,13 +3,12 @@
 namespace App\Filament\Resources\ProductResource\RelationManagers;
 
 use App\Models\Transaction;
-use Filament\Forms;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Form;
+use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Resources\Table;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class StocksRelationManager extends RelationManager
 {
@@ -19,25 +18,17 @@ class StocksRelationManager extends RelationManager
 
     protected static ?string $title = 'Stok per Lokasi';
 
-    public static function form(Form $form): Form
+    public function form(Form $form): Form
     {
         return $form
             ->schema([
-                TextInput::make('location')
-                    ->label('Lokasi'),
-
-                TextInput::make('box')
-                    ->label('Box'),
-
-                TextInput::make('qty')
-                    ->label('Qty')
-                    ->numeric()
-                    ->required()
-                    ->default(0),
+                TextInput::make('location')->label('Lokasi'),
+                TextInput::make('box')->label('Box'),
+                TextInput::make('qty')->label('Qty')->numeric()->required()->default(0),
             ]);
     }
 
-    public static function table(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table
             ->columns([

@@ -1,0 +1,16 @@
+--- a/src/Concerns/ResolvesDynamicLivewireProperties.php
++++ b/src/Concerns/ResolvesDynamicLivewireProperties.php
+@@ -19,6 +19,14 @@ trait ResolvesDynamicLivewireProperties
+         } catch (PropertyNotFoundException $exception) {
+         }
+
++        // PHP 8.4 compatibility: 'id' is Livewire's built-in component identifier.
++        // Without this guard, getAction('id') picks up Livewire's id() method,
++        // returns its string result, and then get_class(string) throws TypeError.
++        if ($property === 'id' && method_exists($this, 'getId')) {
++            return $this->getId();
++        }
++
+         if (
+             $this instanceof HasForms &&
+             (! $this->isCachingForms()) &&

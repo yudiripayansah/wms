@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(composer require *)",
+      "Bash(php artisan *)",
+      "Bash(php -r \"require 'vendor/autoload.php'; new App\\\\Filament\\\\Resources\\\\ProductResource; echo 'ProductResource OK';\")"
+    ]
+  }
+}

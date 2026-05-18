@@ -22,8 +22,4 @@ class Transaction extends Model
     {
         return $this->belongsTo(Product::class, 'kode_barang', 'kode_barang');
     }
-    public function transactions()
-    {
-        return $this->hasMany(Transaction::class, 'kode_barang', 'kode_barang');
-    }
 }

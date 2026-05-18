@@ -4,14 +4,14 @@ namespace App\Filament\Widgets;
 
 use App\Models\Product;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
-use Filament\Widgets\StatsOverviewWidget\Card;
+use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
 class StatsOverviewWidget extends BaseWidget
 {
     protected static ?int $sort = 1;
 
-    protected function getCards(): array
+    protected function getStats(): array
     {
         $totalProducts = Product::count();
 
@@ -25,14 +25,14 @@ class StatsOverviewWidget extends BaseWidget
             ->sum(DB::raw('stocks.qty * products.price'));
 
         return [
-            Card::make('Total Produk', number_format($totalProducts, 0, ',', '.'))
+            Stat::make('Total Produk', number_format($totalProducts, 0, ',', '.'))
                 ->icon('heroicon-o-cube'),
 
-            Card::make('Total Brand', number_format($totalBrands, 0, ',', '.'))
+            Stat::make('Total Brand', number_format($totalBrands, 0, ',', '.'))
                 ->icon('heroicon-o-tag'),
 
-            Card::make('Total Nilai Stok', 'Rp ' . number_format($totalValue, 0, ',', '.'))
-                ->icon('heroicon-o-currency-dollar'),
+            Stat::make('Total Nilai Stok', 'Rp ' . number_format($totalValue, 0, ',', '.'))
+                ->icon('heroicon-o-banknotes'),
         ];
     }
 }
