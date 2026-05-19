@@ -3,7 +3,7 @@
 namespace App\Imports;
 
 use App\Models\AllocationItem;
-use App\Models\Product;
+use App\Models\Inventory;
 use App\Models\Stock;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -18,34 +18,34 @@ class AllocationItemImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
-        $products = Product::pluck('kode_barang', 'kode_barang');
-        $stocks   = Stock::orderByDesc('qty')->get()->groupBy('kode_barang');
+        $inventories = Inventory::pluck('barcode', 'barcode');
+        $stocks      = Stock::orderByDesc('qty')->get()->groupBy('barcode');
 
         foreach ($rows as $row) {
             $row = array_change_key_case($row->toArray(), CASE_LOWER);
             $row = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
 
-            $kode = $row['kode_barang'] ?? '';
-            if (empty($kode) || ! $products->has($kode)) {
+            $barcode = $row['barcode'] ?? '';
+            if (empty($barcode) || ! $inventories->has($barcode)) {
                 $this->skipped++;
                 continue;
             }
 
             $location = $row['location'] ?? null;
-            $box      = $row['box'] ?? null;
+            $bin      = $row['bin'] ?? null;
 
-            if (empty($location) && empty($box)) {
-                $stock    = $stocks->get($kode)?->first();
+            if (empty($location) && empty($bin)) {
+                $stock    = $stocks->get($barcode)?->first();
                 $location = $stock?->location;
-                $box      = $stock?->box;
+                $bin      = $stock?->bin;
             }
 
             AllocationItem::create([
                 'allocation_id' => $this->allocationId,
-                'kode_barang'   => $kode,
+                'barcode'       => $barcode,
                 'qty'           => is_numeric($row['qty'] ?? null) ? (int) $row['qty'] : 0,
                 'location'      => $location,
-                'box'           => $box,
+                'bin'           => $bin,
             ]);
 
             $this->imported++;

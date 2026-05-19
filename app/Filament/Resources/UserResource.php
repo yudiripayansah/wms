@@ -10,7 +10,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
@@ -19,10 +18,18 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon  = 'heroicon-o-users';
-    protected static ?string $navigationLabel = 'Manajemen User';
-    protected static ?string $navigationGroup = 'Pengaturan';
-    protected static ?int    $navigationSort  = 1;
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static ?int    $navigationSort = 1;
+
+    public static function getNavigationLabel(): string
+    {
+        return __('navigation.users');
+    }
+
+    public static function getNavigationGroup(): ?string
+    {
+        return __('navigation.settings');
+    }
 
     public static function canViewAny(): bool
     {
@@ -50,32 +57,42 @@ class UserResource extends Resource
         return $form
             ->schema([
                 TextInput::make('name')
-                    ->label('Nama')
+                    ->label(__('users.name'))
                     ->required(),
 
                 TextInput::make('email')
+                    ->label(__('users.email'))
                     ->email()
                     ->required()
                     ->unique(ignoreRecord: true),
 
                 Select::make('role')
-                    ->label('Role')
+                    ->label(__('users.role'))
                     ->options([
-                        'super_admin' => 'Super Admin',
-                        'admin'       => 'Admin',
-                        'allocator'   => 'Allocator',
+                        'super_admin' => __('users.roles.super_admin'),
+                        'admin'       => __('users.roles.admin'),
+                        'allocator'   => __('users.roles.allocator'),
                     ])
                     ->required()
                     ->default('admin'),
 
+                Select::make('locale')
+                    ->label(__('users.preferred_language'))
+                    ->options([
+                        'id' => 'Bahasa Indonesia',
+                        'en' => 'English',
+                    ])
+                    ->default('id')
+                    ->required(),
+
                 TextInput::make('password')
-                    ->label('Password')
+                    ->label(__('users.password'))
                     ->password()
                     ->revealable()
                     ->required(fn($context) => $context === 'create')
                     ->dehydrateStateUsing(fn($state) => filled($state) ? Hash::make($state) : null)
                     ->dehydrated(fn($state) => filled($state))
-                    ->placeholder(fn($context) => $context === 'edit' ? 'Kosongkan jika tidak diubah' : null),
+                    ->placeholder(fn($context) => $context === 'edit' ? __('users.password_placeholder') : null),
             ]);
     }
 
@@ -84,21 +101,22 @@ class UserResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nama')
+                    ->label(__('users.name'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('email')
+                    ->label(__('users.email'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('role')
-                    ->label('Role')
+                    ->label(__('users.role'))
                     ->badge()
                     ->formatStateUsing(fn($state) => match ($state instanceof UserRole ? $state->value : $state) {
-                        'super_admin' => 'Super Admin',
-                        'admin'       => 'Admin',
-                        'allocator'   => 'Allocator',
+                        'super_admin' => __('users.roles.super_admin'),
+                        'admin'       => __('users.roles.admin'),
+                        'allocator'   => __('users.roles.allocator'),
                         default       => $state,
                     })
                     ->color(fn($state) => match ($state instanceof UserRole ? $state->value : $state) {
@@ -108,8 +126,14 @@ class UserResource extends Resource
                         default       => 'gray',
                     }),
 
+                TextColumn::make('locale')
+                    ->label(__('users.preferred_language'))
+                    ->formatStateUsing(fn($state) => $state === 'id' ? 'Bahasa Indonesia' : 'English')
+                    ->badge()
+                    ->color('gray'),
+
                 TextColumn::make('created_at')
-                    ->label('Dibuat')
+                    ->label(__('users.created'))
                     ->date('d/m/Y')
                     ->sortable(),
             ])

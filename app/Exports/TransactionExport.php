@@ -13,7 +13,7 @@ class TransactionExport implements FromCollection, WithHeadings, WithMapping
 
     public function collection()
     {
-        return Transaction::with('product')
+        return Transaction::with('inventory')
             ->where('type', $this->type)
             ->orderByDesc('created_at')
             ->get();
@@ -23,13 +23,13 @@ class TransactionExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             'Session ID',
-            'Kode Barang',
-            'Nama Barang',
-            'Colour',
+            'Barcode',
+            'Article',
+            'Color',
             'Size',
             'Qty',
             'Location',
-            'Box',
+            'Bin',
             'Status',
             'Keterangan',
             'Tanggal',
@@ -40,13 +40,13 @@ class TransactionExport implements FromCollection, WithHeadings, WithMapping
     {
         return [
             $row->session_id,
-            $row->kode_barang,
-            $row->product?->nama_barang,
-            $row->product?->colour,
-            $row->product?->size,
+            $row->barcode,
+            $row->inventory?->article,
+            $row->inventory?->color,
+            $row->inventory?->size,
             $row->qty,
             $row->location,
-            $row->box,
+            $row->bin,
             $row->status,
             $row->remarks,
             $row->created_at?->format('d/m/Y H:i'),

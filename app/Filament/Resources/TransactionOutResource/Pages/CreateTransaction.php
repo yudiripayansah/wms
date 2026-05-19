@@ -18,9 +18,9 @@ class CreateTransaction extends CreateRecord
             return;
         }
 
-        $stock = Stock::where('kode_barang', $record->kode_barang)
+        $stock = Stock::where('barcode', $record->barcode)
             ->where('location', $record->location)
-            ->where('box', $record->box)
+            ->where('bin', $record->bin)
             ->first();
 
         if ($stock) {

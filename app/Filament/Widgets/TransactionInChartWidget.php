@@ -10,21 +10,24 @@ class TransactionInChartWidget extends ChartWidget
 {
     protected static ?int $sort = 4;
 
-    protected static ?string $heading = 'Grafik Barang Masuk';
-
     protected int|string|array $columnSpan = 'full';
 
     protected static ?string $maxHeight = '300px';
 
     public ?string $filter = 'daily';
 
+    public function getHeading(): string
+    {
+        return __('transactions.chart_in');
+    }
+
     protected function getFilters(): ?array
     {
         return [
-            'daily'   => 'Harian (30 hari)',
-            'weekly'  => 'Mingguan (12 minggu)',
-            'monthly' => 'Bulanan (12 bulan)',
-            'yearly'  => 'Tahunan (5 tahun)',
+            'daily'   => __('transactions.filter_daily'),
+            'weekly'  => __('transactions.filter_weekly'),
+            'monthly' => __('transactions.filter_monthly'),
+            'yearly'  => __('transactions.filter_yearly'),
         ];
     }
 
@@ -35,7 +38,7 @@ class TransactionInChartWidget extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label'           => 'Qty Masuk',
+                    'label'           => __('transactions.qty_in'),
                     'data'            => $data,
                     'borderColor'     => '#22c55e',
                     'backgroundColor' => 'rgba(34,197,94,0.15)',
@@ -57,10 +60,10 @@ class TransactionInChartWidget extends ChartWidget
         $query = Transaction::where('type', $type)->where('status', 'OK');
 
         return match ($this->filter) {
-            'weekly' => $this->buildWeeklyData($query),
+            'weekly'  => $this->buildWeeklyData($query),
             'monthly' => $this->buildMonthlyData($query),
-            'yearly' => $this->buildYearlyData($query),
-            default => $this->buildDailyData($query),
+            'yearly'  => $this->buildYearlyData($query),
+            default   => $this->buildDailyData($query),
         };
     }
 

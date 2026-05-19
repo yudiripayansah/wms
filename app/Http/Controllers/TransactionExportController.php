@@ -7,23 +7,26 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class TransactionExportController extends Controller
 {
-    private array $titles = [
-        'IN'     => 'Barang Masuk',
-        'OUT'    => 'Barang Keluar',
-        'OPNAME' => 'Stock Opname',
-    ];
+    private function titleForType(string $type): string
+    {
+        return match ($type) {
+            'IN'     => __('transactions.stock_in'),
+            'OUT'    => __('transactions.stock_out'),
+            'OPNAME' => __('transactions.opname'),
+            default  => __('navigation.transactions'),
+        };
+    }
 
     public function pdf(string $type)
     {
         ini_set('memory_limit', '512M');
 
         $type  = strtoupper($type);
-        $title = $this->titles[$type] ?? 'Transaksi';
+        $title = $this->titleForType($type);
 
-        // Hanya ambil kolom yang dibutuhkan agar hemat memory
-        $transactions = Transaction::with(['product:kode_barang,nama_barang,colour,size'])
+        $transactions = Transaction::with(['inventory:barcode,article,color,size'])
             ->where('type', $type)
-            ->select(['id', 'session_id', 'kode_barang', 'qty', 'location', 'box', 'status', 'remarks', 'created_at'])
+            ->select(['id', 'session_id', 'barcode', 'qty', 'location', 'bin', 'status', 'remarks', 'created_at'])
             ->orderByDesc('created_at')
             ->get();
 

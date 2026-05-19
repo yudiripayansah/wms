@@ -9,11 +9,11 @@
         <thead class="bg-gray-100 dark:bg-gray-700 sticky top-0">
             <tr>
                 <th class="p-2 text-gray-600 dark:text-gray-300 text-left">No</th>
-                <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Kode</th>
-                <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Nama</th>
+                <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Barcode</th>
+                <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Article</th>
                 <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Qty</th>
                 <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Location</th>
-                <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Box</th>
+                <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Bin</th>
                 <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Status</th>
                 <th class="p-2 text-gray-600 dark:text-gray-300 text-left">Remarks</th>
             </tr>
@@ -21,10 +21,10 @@
 
         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             @foreach($rows as $row)
-            <tr class="{{ $row['status'] === 'DECLINED' ? 'bg-red-50 dark:bg-red-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50' }}">
+            <tr class="{{ ($row['status'] ?? '') === 'DECLINED' ? 'bg-red-50 dark:bg-red-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50' }}">
                 <td class="p-2 text-gray-700 dark:text-gray-300">{{ $loop->iteration }}</td>
-                <td class="p-2 text-gray-700 dark:text-gray-300">{{ $row['kode_barang'] }}</td>
-                <td class="p-2 text-gray-700 dark:text-gray-300">{{ $row['nama_barang'] }}</td>
+                <td class="p-2 text-gray-700 dark:text-gray-300">{{ $row['barcode'] ?? $row['kode_barang'] ?? '' }}</td>
+                <td class="p-2 text-gray-700 dark:text-gray-300">{{ $row['article'] ?? $row['nama_barang'] ?? '' }}</td>
                 <td class="p-2">
                     <input type="number"
                         value="{{ $row['qty'] }}"
@@ -37,18 +37,18 @@
                 </td>
                 <td class="p-2">
                     <input type="text"
-                        value="{{ $row['box'] }}"
+                        value="{{ $row['bin'] ?? $row['box'] ?? '' }}"
                         class="border border-gray-300 dark:border-gray-600 rounded p-1 w-20 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                 </td>
                 <td class="p-2">
                     <select class="border border-gray-300 dark:border-gray-600 rounded p-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                        <option value="OK">OK</option>
-                        <option value="DECLINED">DECLINED</option>
+                        <option value="OK" {{ ($row['status'] ?? '') === 'OK' ? 'selected' : '' }}>OK</option>
+                        <option value="DECLINED" {{ ($row['status'] ?? '') === 'DECLINED' ? 'selected' : '' }}>DECLINED</option>
                     </select>
                 </td>
                 <td class="p-2">
                     <input type="text"
-                        value="{{ $row['remarks'] }}"
+                        value="{{ $row['remarks'] ?? '' }}"
                         class="border border-gray-300 dark:border-gray-600 rounded p-1 w-40 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
                 </td>
             </tr>

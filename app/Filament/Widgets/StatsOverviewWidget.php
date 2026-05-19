@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Product;
+use App\Models\Inventory;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
@@ -13,26 +13,24 @@ class StatsOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $totalProducts = Product::count();
+        $totalInventories = Inventory::count();
 
-        $totalBrands = Product::whereNotNull('brand')
+        $totalBrands = Inventory::whereNotNull('brand')
             ->where('brand', '!=', '')
             ->distinct('brand')
             ->count('brand');
 
-        $totalValue = DB::table('stocks')
-            ->join('products', 'stocks.kode_barang', '=', 'products.kode_barang')
-            ->sum(DB::raw('stocks.qty * products.price'));
+        $totalQty = DB::table('stocks')->sum('qty');
 
         return [
-            Stat::make('Total Produk', number_format($totalProducts, 0, ',', '.'))
+            Stat::make(__('dashboard.total_inventory'), number_format($totalInventories, 0, ',', '.'))
                 ->icon('heroicon-o-cube'),
 
-            Stat::make('Total Brand', number_format($totalBrands, 0, ',', '.'))
+            Stat::make(__('dashboard.total_brand'), number_format($totalBrands, 0, ',', '.'))
                 ->icon('heroicon-o-tag'),
 
-            Stat::make('Total Nilai Stok', 'Rp ' . number_format($totalValue, 0, ',', '.'))
-                ->icon('heroicon-o-banknotes'),
+            Stat::make(__('dashboard.total_stock_qty'), number_format($totalQty, 0, ',', '.'))
+                ->icon('heroicon-o-archive-box'),
         ];
     }
 }

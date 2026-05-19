@@ -5,7 +5,7 @@ namespace App\Filament\Resources\TransactionOutResource\Pages;
 use App\Filament\Resources\TransactionOutResource;
 use App\Imports\TransactionInPreviewImport;
 use App\Models\Allocation;
-use App\Models\Product;
+use App\Models\Inventory;
 use App\Models\Stock;
 use App\Models\Transaction;
 use Filament\Actions\Action;
@@ -26,32 +26,32 @@ class ListTransactions extends ListRecords
     {
         return [
             Action::make('importFromAllocation')
-                ->label('Import dari Allocation')
-                ->modalHeading('Import dari Allocation')
-                ->modalSubmitActionLabel('Proses ke Transaction OUT')
+                ->label(__('transactions.import_from_alloc'))
+                ->modalHeading(__('transactions.import_alloc_head'))
+                ->modalSubmitActionLabel(__('transactions.process_to_out'))
                 ->color('gray')
                 ->form([
                     Select::make('allocation_id')
-                        ->label('Pilih Allocation')
+                        ->label(__('transactions.select_alloc'))
                         ->options(
-                            Allocation::where('status', 'CONFIRMED')
+                            Allocation::where('status', 'FINISHED')
                                 ->get()
                                 ->mapWithKeys(fn($a) => [
                                     $a->id => 'Session ' . $a->session_id
-                                        . ' — ' . $a->items()->count() . ' produk'
+                                        . ' — ' . $a->items()->count() . ' ' . __('general.items')
                                         . ($a->remarks ? ' | ' . $a->remarks : ''),
                                 ])
                                 ->toArray()
                         )
                         ->searchable()
                         ->required()
-                        ->placeholder('Pilih allocation yang sudah dikonfirmasi...'),
+                        ->placeholder(__('transactions.alloc_placeholder')),
                 ])
                 ->action(function (array $data) {
                     $allocation = Allocation::with('items')->findOrFail($data['allocation_id']);
 
-                    if ($allocation->status !== 'CONFIRMED') {
-                        Notification::make()->title('Allocation belum dikonfirmasi')->danger()->send();
+                    if ($allocation->status !== 'FINISHED') {
+                        Notification::make()->title(__('transactions.not_confirmed'))->danger()->send();
                         return;
                     }
 
@@ -59,19 +59,19 @@ class ListTransactions extends ListRecords
 
                     foreach ($allocation->items as $item) {
                         Transaction::create([
-                            'session_id'  => $sessionId,
-                            'kode_barang' => $item->kode_barang,
-                            'qty'         => $item->qty,
-                            'location'    => $item->location,
-                            'box'         => $item->box,
-                            'type'        => 'OUT',
-                            'status'      => 'OK',
-                            'remarks'     => 'Allocation: ' . $allocation->session_id,
+                            'session_id' => $sessionId,
+                            'barcode'    => $item->barcode,
+                            'qty'        => $item->qty,
+                            'location'   => $item->location,
+                            'bin'        => $item->bin,
+                            'type'       => 'OUT',
+                            'status'     => 'OK',
+                            'remarks'    => 'Allocation: ' . $allocation->session_id,
                         ]);
 
-                        $stock = Stock::where('kode_barang', $item->kode_barang)
+                        $stock = Stock::where('barcode', $item->barcode)
                             ->where('location', $item->location)
-                            ->where('box', $item->box)
+                            ->where('bin', $item->bin)
                             ->first();
 
                         if ($stock) {
@@ -79,23 +79,23 @@ class ListTransactions extends ListRecords
                         }
                     }
 
-                    $allocation->update(['status' => 'PROCESSED']);
+                    $allocation->update(['status' => 'COMPLETED']);
 
                     Notification::make()
-                        ->title('Allocation berhasil diproses ke Transaction OUT')
-                        ->body($allocation->items->count() . ' produk berhasil dicatat.')
+                        ->title(__('transactions.alloc_processed'))
+                        ->body(__('transactions.items_recorded', ['count' => $allocation->items->count()]))
                         ->success()
                         ->send();
                 }),
 
             Action::make('newTransaction')
-                ->label('New Barang Keluar')
-                ->modalHeading('Transaksi Barang Keluar')
-                ->modalSubmitActionLabel('Proses Transaksi')
+                ->label(__('transactions.new_out'))
+                ->modalHeading(__('transactions.modal_out'))
+                ->modalSubmitActionLabel(__('transactions.process_out'))
                 ->modalWidth('7xl')
                 ->form([
                     FileUpload::make('file')
-                        ->label('Upload Excel (opsional — kolom: kode_barang, qty, location, box)')
+                        ->label(__('transactions.upload_excel'))
                         ->disk('public')
                         ->directory('imports')
                         ->acceptedFileTypes([
@@ -112,8 +112,8 @@ class ListTransactions extends ListRecords
 
                     View::make('filament.transaction-in-modal-table')
                         ->viewData([
-                            'productMap' => Product::orderBy('kode_barang')
-                                ->pluck('nama_barang', 'kode_barang')
+                            'inventoryMap' => Inventory::orderBy('barcode')
+                                ->pluck('article', 'barcode')
                                 ->toArray(),
                         ]),
                 ])
@@ -121,26 +121,25 @@ class ListTransactions extends ListRecords
                     $sessionId = now()->timestamp;
 
                     foreach ($this->transactionRows as $row) {
-                        if (empty($row['kode_barang'])) continue;
+                        if (empty($row['barcode'])) continue;
 
-                        $product = Product::where('kode_barang', $row['kode_barang'])->first();
-                        $status  = $row['status'] ?? 'OK';
+                        $status = $row['status'] ?? 'OK';
 
                         Transaction::create([
-                            'session_id'  => $sessionId,
-                            'kode_barang' => $row['kode_barang'],
-                            'qty'         => (int) ($row['qty'] ?? 0),
-                            'location'    => $row['location'] ?? null,
-                            'box'         => $row['box'] ?? null,
-                            'status'      => $status,
-                            'type'        => 'OUT',
-                            'remarks'     => $row['remarks'] ?? null,
+                            'session_id' => $sessionId,
+                            'barcode'    => $row['barcode'],
+                            'qty'        => (int) ($row['qty'] ?? 0),
+                            'location'   => $row['location'] ?? null,
+                            'bin'        => $row['bin'] ?? null,
+                            'status'     => $status,
+                            'type'       => 'OUT',
+                            'remarks'    => $row['remarks'] ?? null,
                         ]);
 
-                        if ($status === 'OK' && $product) {
-                            $stock = Stock::where('kode_barang', $row['kode_barang'])
+                        if ($status === 'OK') {
+                            $stock = Stock::where('barcode', $row['barcode'])
                                 ->where('location', $row['location'] ?? null)
-                                ->where('box', $row['box'] ?? null)
+                                ->where('bin', $row['bin'] ?? null)
                                 ->first();
 
                             if ($stock) {
@@ -152,7 +151,7 @@ class ListTransactions extends ListRecords
                     $this->transactionRows = [];
 
                     Notification::make()
-                        ->title('Transaksi berhasil disimpan')
+                        ->title(__('transactions.saved'))
                         ->success()
                         ->send();
                 }),

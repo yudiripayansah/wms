@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'generated'           => 'Generated',
+    'printed_at'          => 'Printed',
+    'total_records'       => 'Total',
+    'allocation_sheet'    => 'Allocation Sheet',
+    'group'               => 'Group',
+    'inventory_list'      => 'Inventory List',
+    'transaction_list'    => 'Transaction List',
+    'transaction_history' => 'Transaction History',
+    'barcode'             => 'Barcode',
+    'brand'               => 'Brand',
+    'article'             => 'Article',
+    'color'               => 'Color',
+    'size'                => 'Size',
+    'total_qty'           => 'Total Qty',
+    'session_id'          => 'Session ID',
+    'qty'                 => 'Qty',
+    'location'            => 'Location',
+    'bin'                 => 'Bin',
+    'status'              => 'Status',
+    'remarks'             => 'Remarks',
+    'date'                => 'Date',
+    'type'                => 'Type',
+    'sku'                 => 'SKU',
+    'inventory_info'      => 'Inventory',
+];

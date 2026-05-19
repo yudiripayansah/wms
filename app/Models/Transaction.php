@@ -10,16 +10,17 @@ class Transaction extends Model
     use HasFactory;
     protected $fillable = [
         'session_id',
-        'kode_barang',
+        'barcode',
         'qty',
         'location',
-        'box',
+        'bin',
         'status',
         'type',
         'remarks',
     ];
-    public function product()
+
+    public function inventory()
     {
-        return $this->belongsTo(Product::class, 'kode_barang', 'kode_barang');
+        return $this->belongsTo(Inventory::class, 'barcode', 'barcode');
     }
 }

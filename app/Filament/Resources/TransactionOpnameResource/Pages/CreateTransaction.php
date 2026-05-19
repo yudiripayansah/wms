@@ -20,9 +20,9 @@ class CreateTransaction extends CreateRecord
 
         Stock::updateOrCreate(
             [
-                'kode_barang' => $record->kode_barang,
-                'location'    => $record->location,
-                'box'         => $record->box,
+                'barcode'  => $record->barcode,
+                'location' => $record->location,
+                'bin'      => $record->bin,
             ],
             ['qty' => $record->qty]
         );

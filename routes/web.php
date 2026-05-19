@@ -1,24 +1,35 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ProductExportController;
-use App\Http\Controllers\ProductTransactionController;
+use App\Http\Controllers\AllocationPreviewController;
+use App\Http\Controllers\InventoryExportController;
+use App\Http\Controllers\InventoryTransactionController;
 use App\Http\Controllers\TransactionExportController;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
-Route::get('/export-products-pdf', [ProductExportController::class, 'pdf']);
+
+Route::get('/locale/{locale}', function (string $locale) {
+    if (in_array($locale, ['en', 'id'])) {
+        session(['locale' => $locale]);
+        if (auth()->check()) {
+            auth()->user()->update(['locale' => $locale]);
+        }
+    }
+    return redirect()->back();
+})->name('locale.switch');
+
+Route::get('/export-inventories-pdf', [InventoryExportController::class, 'pdf']);
 Route::get('/export-transactions-pdf/{type}', [TransactionExportController::class, 'pdf']);
-Route::get('/export-product-transactions-pdf/{kodeBarang}', [ProductTransactionController::class, 'pdf']);
+Route::get('/export-inventory-transactions-pdf/{barcode}', [InventoryTransactionController::class, 'pdf']);
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/allocation-preview/{allocation}/{form?}', [AllocationPreviewController::class, 'preview'])
+        ->name('allocation.preview')
+        ->where('form', 'location|barcode');
+
+    Route::get('/allocation-pdf/{allocation}/{form?}', [AllocationPreviewController::class, 'pdf'])
+        ->name('allocation.pdf')
+        ->where('form', 'location|barcode');
+});

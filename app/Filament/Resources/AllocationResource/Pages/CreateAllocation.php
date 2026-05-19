@@ -21,14 +21,14 @@ class CreateAllocation extends CreateRecord
     protected function afterCreate(): void
     {
         foreach ($this->allocationRows as $row) {
-            if (empty($row['kode_barang'])) continue;
+            if (empty($row['barcode'])) continue;
 
             AllocationItem::create([
                 'allocation_id' => $this->record->id,
-                'kode_barang'   => $row['kode_barang'],
+                'barcode'       => $row['barcode'],
                 'qty'           => (int) ($row['qty'] ?? 0),
                 'location'      => $row['location'] ?? null,
-                'box'           => $row['box'] ?? null,
+                'bin'           => $row['bin'] ?? null,
             ]);
         }
     }

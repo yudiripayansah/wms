@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'generated'           => 'Dibuat',
+    'printed_at'          => 'Dicetak',
+    'total_records'       => 'Total',
+    'allocation_sheet'    => 'Allocation Sheet',
+    'group'               => 'Grup',
+    'inventory_list'      => 'Daftar Inventory',
+    'transaction_list'    => 'Daftar Transaksi',
+    'transaction_history' => 'Histori Transaksi',
+    'barcode'             => 'Barcode',
+    'brand'               => 'Brand',
+    'article'             => 'Article',
+    'color'               => 'Warna',
+    'size'                => 'Ukuran',
+    'total_qty'           => 'Total Qty',
+    'session_id'          => 'Session ID',
+    'qty'                 => 'Qty',
+    'location'            => 'Lokasi',
+    'bin'                 => 'Bin',
+    'status'              => 'Status',
+    'remarks'             => 'Keterangan',
+    'date'                => 'Tanggal',
+    'type'                => 'Tipe',
+    'sku'                 => 'SKU',
+    'inventory_info'      => 'Inventory',
+];

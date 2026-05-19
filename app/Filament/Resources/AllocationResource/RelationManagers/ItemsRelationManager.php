@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\AllocationResource\RelationManagers;
 
 use App\Imports\AllocationItemImport;
-use App\Models\Product;
+use App\Models\Inventory;
 use App\Models\Stock;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -22,53 +22,56 @@ class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
 
-    protected static ?string $recordTitleAttribute = 'kode_barang';
+    protected static ?string $recordTitleAttribute = 'barcode';
 
-    protected static ?string $title = 'Daftar Produk Allocation';
+    public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
+    {
+        return __('allocation.items_title');
+    }
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Select::make('kode_barang')
-                    ->label('Kode Barang')
-                    ->options(fn() => Product::orderBy('kode_barang')->pluck('kode_barang', 'kode_barang'))
+                Select::make('barcode')
+                    ->label(__('general.barcode'))
+                    ->options(fn() => Inventory::orderBy('barcode')->pluck('barcode', 'barcode'))
                     ->searchable()
                     ->preload()
                     ->required()
                     ->live()
                     ->afterStateHydrated(function (?string $state, Set $set) {
                         if (! $state) return;
-                        $product = Product::where('kode_barang', $state)->first();
-                        if ($product) {
-                            $set('nama_barang', $product->nama_barang);
-                            $set('colour', $product->colour);
-                            $set('size', $product->size);
+                        $inv = Inventory::where('barcode', $state)->first();
+                        if ($inv) {
+                            $set('article', $inv->article);
+                            $set('color', $inv->color);
+                            $set('size', $inv->size);
                         }
-                        $stock = Stock::where('kode_barang', $state)->orderByDesc('qty')->first();
+                        $stock = Stock::where('barcode', $state)->orderByDesc('qty')->first();
                         if ($stock) {
                             $set('location', $stock->location);
-                            $set('box', $stock->box);
+                            $set('bin', $stock->bin);
                         }
                     })
                     ->afterStateUpdated(function (?string $state, Set $set) {
-                        $product = $state ? Product::where('kode_barang', $state)->first() : null;
-                        $set('nama_barang', $product?->nama_barang);
-                        $set('colour', $product?->colour);
-                        $set('size', $product?->size);
+                        $inv = $state ? Inventory::where('barcode', $state)->first() : null;
+                        $set('article', $inv?->article);
+                        $set('color', $inv?->color);
+                        $set('size', $inv?->size);
 
-                        $stock = $state ? Stock::where('kode_barang', $state)->orderByDesc('qty')->first() : null;
+                        $stock = $state ? Stock::where('barcode', $state)->orderByDesc('qty')->first() : null;
                         $set('location', $stock?->location);
-                        $set('box', $stock?->box);
+                        $set('bin', $stock?->bin);
                     }),
 
-                TextInput::make('nama_barang')->disabled()->dehydrated(false),
-                TextInput::make('colour')->disabled()->dehydrated(false),
-                TextInput::make('size')->disabled()->dehydrated(false),
+                TextInput::make('article')->label(__('general.article'))->disabled()->dehydrated(false),
+                TextInput::make('color')->label(__('general.color'))->disabled()->dehydrated(false),
+                TextInput::make('size')->label(__('general.size'))->disabled()->dehydrated(false),
 
-                TextInput::make('qty')->numeric()->required()->minValue(1),
-                TextInput::make('location')->label('Location'),
-                TextInput::make('box')->label('Box'),
+                TextInput::make('qty')->label(__('general.qty'))->numeric()->required()->minValue(1),
+                TextInput::make('location')->label(__('general.location')),
+                TextInput::make('bin')->label(__('general.bin')),
             ]);
     }
 
@@ -76,27 +79,27 @@ class ItemsRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('kode_barang')->label('Kode Barang'),
-                TextColumn::make('product.nama_barang')->label('Nama Barang'),
-                TextColumn::make('product.colour')->label('Colour'),
-                TextColumn::make('product.size')->label('Size'),
-                TextColumn::make('qty')->label('Qty'),
-                TextColumn::make('location')->label('Location'),
-                TextColumn::make('box')->label('Box'),
+                TextColumn::make('barcode')->label(__('general.barcode')),
+                TextColumn::make('inventory.article')->label(__('general.article')),
+                TextColumn::make('inventory.color')->label(__('general.color')),
+                TextColumn::make('inventory.size')->label(__('general.size')),
+                TextColumn::make('qty')->label(__('general.qty')),
+                TextColumn::make('location')->label(__('general.location')),
+                TextColumn::make('bin')->label(__('general.bin')),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()->label('Tambah Produk'),
+                Tables\Actions\CreateAction::make()->label(__('allocation.add_item')),
 
                 Tables\Actions\Action::make('import_excel')
-                    ->label('Import Excel')
+                    ->label(__('general.import_excel'))
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('gray')
-                    ->modalHeading('Import Produk dari Excel')
-                    ->modalDescription('Format kolom: kode_barang, qty. Kolom location & box opsional — jika kosong akan diisi otomatis dari data stok.')
-                    ->modalSubmitActionLabel('Import')
+                    ->modalHeading(__('allocation.import_heading'))
+                    ->modalDescription(__('allocation.import_desc'))
+                    ->modalSubmitActionLabel(__('allocation.import_submit'))
                     ->form([
                         FileUpload::make('file')
-                            ->label('File Excel (.xlsx)')
+                            ->label(__('general.import_excel') . ' (.xlsx)')
                             ->disk('public')
                             ->directory('imports')
                             ->acceptedFileTypes([
@@ -113,8 +116,13 @@ class ItemsRelationManager extends RelationManager
 
                         Storage::disk('public')->delete($data['file']);
 
+                        $msg = __('allocation.import_success', ['count' => $import->imported]);
+                        if ($import->skipped) {
+                            $msg .= __('allocation.import_skipped', ['skipped' => $import->skipped]);
+                        }
+
                         Notification::make()
-                            ->title("{$import->imported} produk berhasil diimport" . ($import->skipped ? ", {$import->skipped} baris dilewati (kode tidak ditemukan)" : ''))
+                            ->title($msg)
                             ->success()
                             ->send();
                     }),

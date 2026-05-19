@@ -4,7 +4,7 @@ namespace App\Filament\Resources\TransactionInResource\Pages;
 
 use App\Filament\Resources\TransactionInResource;
 use App\Imports\TransactionInPreviewImport;
-use App\Models\Product;
+use App\Models\Inventory;
 use App\Models\Stock;
 use App\Models\Transaction;
 use Filament\Actions\Action;
@@ -24,13 +24,13 @@ class ListTransactions extends ListRecords
     {
         return [
             Action::make('newTransaction')
-                ->label('New Barang Masuk')
-                ->modalHeading('Transaksi Barang Masuk')
-                ->modalSubmitActionLabel('Proses Transaksi')
+                ->label(__('transactions.new_in'))
+                ->modalHeading(__('transactions.modal_in'))
+                ->modalSubmitActionLabel(__('transactions.process_in'))
                 ->modalWidth('7xl')
                 ->form([
                     FileUpload::make('file')
-                        ->label('Upload Excel (opsional — kolom: kode_barang, qty, location, box)')
+                        ->label(__('transactions.upload_excel'))
                         ->disk('public')
                         ->directory('imports')
                         ->acceptedFileTypes([
@@ -47,8 +47,8 @@ class ListTransactions extends ListRecords
 
                     View::make('filament.transaction-in-modal-table')
                         ->viewData([
-                            'productMap' => Product::orderBy('kode_barang')
-                                ->pluck('nama_barang', 'kode_barang')
+                            'inventoryMap' => Inventory::orderBy('barcode')
+                                ->pluck('article', 'barcode')
                                 ->toArray(),
                         ]),
                 ])
@@ -56,36 +56,35 @@ class ListTransactions extends ListRecords
                     $sessionId = now()->timestamp;
 
                     foreach ($this->transactionRows as $row) {
-                        if (empty($row['kode_barang'])) continue;
+                        if (empty($row['barcode'])) continue;
 
-                        $product = Product::where('kode_barang', $row['kode_barang'])->first();
-                        $status  = $row['status'] ?? 'OK';
+                        $status = $row['status'] ?? 'OK';
 
                         Transaction::create([
-                            'session_id'  => $sessionId,
-                            'kode_barang' => $row['kode_barang'],
-                            'qty'         => (int) ($row['qty'] ?? 0),
-                            'location'    => $row['location'] ?? null,
-                            'box'         => $row['box'] ?? null,
-                            'status'      => $status,
-                            'type'        => 'IN',
-                            'remarks'     => $row['remarks'] ?? null,
+                            'session_id' => $sessionId,
+                            'barcode'    => $row['barcode'],
+                            'qty'        => (int) ($row['qty'] ?? 0),
+                            'location'   => $row['location'] ?? null,
+                            'bin'        => $row['bin'] ?? null,
+                            'status'     => $status,
+                            'type'       => 'IN',
+                            'remarks'    => $row['remarks'] ?? null,
                         ]);
 
-                        if ($status === 'OK' && $product) {
-                            $stock = Stock::where('kode_barang', $row['kode_barang'])
+                        if ($status === 'OK') {
+                            $stock = Stock::where('barcode', $row['barcode'])
                                 ->where('location', $row['location'] ?? null)
-                                ->where('box', $row['box'] ?? null)
+                                ->where('bin', $row['bin'] ?? null)
                                 ->first();
 
                             if ($stock) {
                                 $stock->increment('qty', (int) ($row['qty'] ?? 0));
                             } else {
                                 Stock::create([
-                                    'kode_barang' => $row['kode_barang'],
-                                    'qty'         => (int) ($row['qty'] ?? 0),
-                                    'location'    => $row['location'] ?? null,
-                                    'box'         => $row['box'] ?? null,
+                                    'barcode'  => $row['barcode'],
+                                    'qty'      => (int) ($row['qty'] ?? 0),
+                                    'location' => $row['location'] ?? null,
+                                    'bin'      => $row['bin'] ?? null,
                                 ]);
                             }
                         }
@@ -94,7 +93,7 @@ class ListTransactions extends ListRecords
                     $this->transactionRows = [];
 
                     Notification::make()
-                        ->title('Transaksi berhasil disimpan')
+                        ->title(__('transactions.saved'))
                         ->success()
                         ->send();
                 }),

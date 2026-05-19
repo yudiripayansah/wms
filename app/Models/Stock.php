@@ -10,14 +10,14 @@ class Stock extends Model
     use HasFactory;
 
     protected $fillable = [
-        'kode_barang',
+        'barcode',
         'qty',
         'location',
-        'box',
+        'bin',
     ];
 
-    public function product()
+    public function inventory()
     {
-        return $this->belongsTo(Product::class, 'kode_barang', 'kode_barang');
+        return $this->belongsTo(Inventory::class, 'barcode', 'barcode');
     }
 }

@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Allocation;
-use App\Models\Product;
+use App\Models\Inventory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class AllocationItemFactory extends Factory
@@ -12,10 +12,10 @@ class AllocationItemFactory extends Factory
     {
         return [
             'allocation_id' => Allocation::factory(),
-            'kode_barang'   => fn() => Product::factory()->create()->kode_barang,
+            'barcode'       => fn() => Inventory::factory()->create()->barcode,
             'qty'           => fake()->numberBetween(1, 20),
             'location'      => fake()->optional(0.7)->lexify('LOC-????'),
-            'box'           => fake()->optional(0.5)->bothify('BOX-##'),
+            'bin'           => fake()->optional(0.5)->bothify('BIN-##'),
         ];
     }
 }

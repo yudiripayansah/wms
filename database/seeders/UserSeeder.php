@@ -15,6 +15,7 @@ class UserSeeder extends Seeder
             [
                 'name'     => 'Super Admin',
                 'role'     => 'super_admin',
+                'locale'   => 'id',
                 'password' => Hash::make('password'),
             ]
         );
@@ -24,6 +25,7 @@ class UserSeeder extends Seeder
             [
                 'name'     => 'Admin',
                 'role'     => 'admin',
+                'locale'   => 'id',
                 'password' => Hash::make('password'),
             ]
         );
@@ -33,6 +35,7 @@ class UserSeeder extends Seeder
             [
                 'name'     => 'Allocator',
                 'role'     => 'allocator',
+                'locale'   => 'id',
                 'password' => Hash::make('password'),
             ]
         );

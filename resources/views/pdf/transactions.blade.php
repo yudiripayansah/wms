@@ -17,21 +17,23 @@
 <body>
 
 <h3>{{ $title }}</h3>
-<p class="meta">Dicetak: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; Total: {{ count($transactions) }} record</p>
+<p class="meta">{{ __('pdf.printed_at') }}: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; {{ __('pdf.total_records') }}: {{ count($transactions) }} record</p>
 
 <table>
     <thead>
         <tr>
             <th>#</th>
-            <th>Session ID</th>
-            <th>Kode Barang</th>
-            <th>Nama Barang</th>
-            <th>Qty</th>
-            <th>Location</th>
-            <th>Box</th>
-            <th>Status</th>
-            <th>Keterangan</th>
-            <th>Tanggal</th>
+            <th>{{ __('pdf.session_id') }}</th>
+            <th>{{ __('pdf.barcode') }}</th>
+            <th>{{ __('pdf.article') }}</th>
+            <th>{{ __('pdf.color') }}</th>
+            <th>{{ __('pdf.size') }}</th>
+            <th>{{ __('pdf.qty') }}</th>
+            <th>{{ __('pdf.location') }}</th>
+            <th>{{ __('pdf.bin') }}</th>
+            <th>{{ __('pdf.status') }}</th>
+            <th>{{ __('pdf.remarks') }}</th>
+            <th>{{ __('pdf.date') }}</th>
         </tr>
     </thead>
     <tbody>
@@ -39,11 +41,13 @@
         <tr class="{{ $t->status === 'DECLINED' ? 'declined' : '' }}">
             <td>{{ $i + 1 }}</td>
             <td>{{ $t->session_id }}</td>
-            <td>{{ $t->kode_barang }}</td>
-            <td>{{ $t->product?->nama_barang }}</td>
+            <td>{{ $t->barcode }}</td>
+            <td>{{ $t->inventory?->article }}</td>
+            <td>{{ $t->inventory?->color }}</td>
+            <td>{{ $t->inventory?->size }}</td>
             <td>{{ $t->qty }}</td>
             <td>{{ $t->location }}</td>
-            <td>{{ $t->box }}</td>
+            <td>{{ $t->bin }}</td>
             <td>{{ $t->status }}</td>
             <td>{{ $t->remarks }}</td>
             <td>{{ $t->created_at?->format('d/m/Y H:i') }}</td>

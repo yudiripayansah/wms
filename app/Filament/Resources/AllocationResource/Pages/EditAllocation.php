@@ -18,14 +18,14 @@ class EditAllocation extends EditRecord
         parent::mount($record);
 
         $this->allocationRows = $this->record->items()
-            ->with('product')
+            ->with('inventory')
             ->get()
             ->map(fn($item) => [
-                'kode_barang' => $item->kode_barang,
-                'nama_barang' => $item->product?->nama_barang ?? '',
-                'qty'         => $item->qty,
-                'location'    => $item->location ?? '',
-                'box'         => $item->box ?? '',
+                'barcode'  => $item->barcode,
+                'article'  => $item->inventory?->article ?? '',
+                'qty'      => $item->qty,
+                'location' => $item->location ?? '',
+                'bin'      => $item->bin ?? '',
             ])
             ->toArray();
     }
@@ -35,14 +35,14 @@ class EditAllocation extends EditRecord
         $this->record->items()->delete();
 
         foreach ($this->allocationRows as $row) {
-            if (empty($row['kode_barang'])) continue;
+            if (empty($row['barcode'])) continue;
 
             AllocationItem::create([
                 'allocation_id' => $this->record->id,
-                'kode_barang'   => $row['kode_barang'],
+                'barcode'       => $row['barcode'],
                 'qty'           => (int) ($row['qty'] ?? 0),
                 'location'      => $row['location'] ?? null,
-                'box'           => $row['box'] ?? null,
+                'bin'           => $row['bin'] ?? null,
             ]);
         }
     }
@@ -51,7 +51,7 @@ class EditAllocation extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->visible(fn() => $this->record->status !== 'PROCESSED'),
+                ->visible(fn() => $this->record->status !== 'COMPLETED'),
         ];
     }
 }

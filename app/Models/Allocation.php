@@ -14,6 +14,12 @@ class Allocation extends Model
         'session_id',
         'status',
         'remarks',
+        'customer',
+        'distribution',
+        'release_date',
+        'brand',
+        'sales_associate',
+        'route',
     ];
 
     public function user()

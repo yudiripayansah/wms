@@ -11,18 +11,23 @@ class AllocationFactory extends Factory
         return [
             'user_id'    => null,
             'session_id' => fake()->unique()->uuid(),
-            'status'     => 'DRAFT',
+            'status'     => 'PENDING',
             'remarks'    => fake()->optional(0.4)->sentence(),
         ];
     }
 
-    public function confirmed(): static
+    public function processing(): static
     {
-        return $this->state(['status' => 'CONFIRMED']);
+        return $this->state(['status' => 'PROCESSING']);
     }
 
-    public function processed(): static
+    public function finished(): static
     {
-        return $this->state(['status' => 'PROCESSED']);
+        return $this->state(['status' => 'FINISHED']);
+    }
+
+    public function completed(): static
+    {
+        return $this->state(['status' => 'COMPLETED']);
     }
 }

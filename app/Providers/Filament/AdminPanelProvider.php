@@ -7,7 +7,9 @@ use App\Filament\Widgets\StatsOverviewWidget;
 use App\Filament\Widgets\TopStockWidget;
 use App\Filament\Widgets\TransactionInChartWidget;
 use App\Filament\Widgets\TransactionOutChartWidget;
+use App\Http\Middleware\SetLocale;
 use Filament\Http\Middleware\Authenticate;
+use Illuminate\Contracts\View\View;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
@@ -60,9 +62,14 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                SetLocale::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ])
+            ->renderHook(
+                'panels::topbar.end',
+                fn (): View => view('filament.locale-switcher'),
+            );
     }
 }

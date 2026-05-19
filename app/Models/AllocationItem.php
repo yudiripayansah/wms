@@ -11,10 +11,10 @@ class AllocationItem extends Model
 
     protected $fillable = [
         'allocation_id',
-        'kode_barang',
+        'barcode',
         'qty',
         'location',
-        'box',
+        'bin',
     ];
 
     public function allocation()
@@ -22,8 +22,8 @@ class AllocationItem extends Model
         return $this->belongsTo(Allocation::class);
     }
 
-    public function product()
+    public function inventory()
     {
-        return $this->belongsTo(Product::class, 'kode_barang', 'kode_barang');
+        return $this->belongsTo(Inventory::class, 'barcode', 'barcode');
     }
 }

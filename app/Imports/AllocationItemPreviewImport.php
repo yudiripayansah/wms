@@ -2,7 +2,7 @@
 
 namespace App\Imports;
 
-use App\Models\Product;
+use App\Models\Inventory;
 use App\Models\Stock;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -14,27 +14,27 @@ class AllocationItemPreviewImport implements ToCollection, WithHeadingRow
 
     public function collection(Collection $rows)
     {
-        $products = Product::pluck('nama_barang', 'kode_barang');
-        $stocks   = Stock::select('kode_barang', 'location', 'box')
+        $inventories = Inventory::pluck('article', 'barcode');
+        $stocks      = Stock::select('barcode', 'location', 'bin')
             ->orderByDesc('qty')
             ->get()
-            ->unique('kode_barang')
-            ->keyBy('kode_barang');
+            ->unique('barcode')
+            ->keyBy('barcode');
 
         foreach ($rows as $row) {
-            $row  = array_change_key_case($row->toArray(), CASE_LOWER);
-            $row  = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
-            $kode = $row['kode_barang'] ?? '';
-            if (empty($kode)) continue;
+            $row     = array_change_key_case($row->toArray(), CASE_LOWER);
+            $row     = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
+            $barcode = $row['barcode'] ?? '';
+            if (empty($barcode)) continue;
 
-            $stock = $stocks->get($kode);
+            $stock = $stocks->get($barcode);
 
             $this->rows[] = [
-                'kode_barang' => $kode,
-                'nama_barang' => $products->get($kode, ''),
-                'qty'         => is_numeric($row['qty'] ?? null) ? (int) $row['qty'] : 0,
-                'location'    => !empty($row['location']) ? $row['location'] : ($stock?->location ?? ''),
-                'box'         => !empty($row['box'])      ? $row['box']      : ($stock?->box      ?? ''),
+                'barcode'  => $barcode,
+                'article'  => $inventories->get($barcode, ''),
+                'qty'      => is_numeric($row['qty'] ?? null) ? (int) $row['qty'] : 0,
+                'location' => !empty($row['location']) ? $row['location'] : ($stock?->location ?? ''),
+                'bin'      => !empty($row['bin'])      ? $row['bin']      : ($stock?->bin      ?? ''),
             ];
         }
     }
