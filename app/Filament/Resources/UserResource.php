@@ -33,22 +33,22 @@ class UserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return (auth()->user()?->isSuperAdmin() ?? false)
+        return (current_user()?->isSuperAdmin() ?? false)
             && auth()->id() !== $record->id;
     }
 

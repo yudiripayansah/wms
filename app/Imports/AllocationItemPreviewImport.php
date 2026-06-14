@@ -2,40 +2,46 @@
 
 namespace App\Imports;
 
-use App\Models\Inventory;
-use App\Models\Stock;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class AllocationItemPreviewImport implements ToCollection, WithHeadingRow
+/**
+ * Reads an Excel file and accumulates qty per unique barcode.
+ * Inventory and stock lookups are done externally after import.
+ */
+class AllocationItemPreviewImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
-    public array $rows = [];
+    /** barcode → {barcode, qty, location, bin} */
+    public array $accumulated  = [];
+    public int   $totalRawRows = 0;
 
-    public function collection(Collection $rows)
+    public function chunkSize(): int
     {
-        $inventories = Inventory::pluck('article', 'barcode');
-        $stocks      = Stock::select('barcode', 'location', 'bin')
-            ->orderByDesc('qty')
-            ->get()
-            ->unique('barcode')
-            ->keyBy('barcode');
+        return 1000;
+    }
 
-        foreach ($rows as $row) {
-            $row     = array_change_key_case($row->toArray(), CASE_LOWER);
-            $row     = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
-            $barcode = $row['barcode'] ?? '';
-            if (empty($barcode)) continue;
+    public function collection(Collection $rows): void
+    {
+        foreach ($rows as $raw) {
+            $row     = array_change_key_case($raw->toArray(), CASE_LOWER);
+            $barcode = trim((string) ($row['barcode'] ?? ''));
+            if ($barcode === '') continue;
 
-            $stock = $stocks->get($barcode);
+            $this->totalRawRows++;
+            $qty = is_numeric($row['qty'] ?? null) ? (int) $row['qty'] : 0;
 
-            $this->rows[] = [
-                'barcode'  => $barcode,
-                'article'  => $inventories->get($barcode, ''),
-                'qty'      => is_numeric($row['qty'] ?? null) ? (int) $row['qty'] : 0,
-                'location' => !empty($row['location']) ? $row['location'] : ($stock?->location ?? ''),
-                'bin'      => !empty($row['bin'])      ? $row['bin']      : ($stock?->bin      ?? ''),
-            ];
+            if (! isset($this->accumulated[$barcode])) {
+                $this->accumulated[$barcode] = [
+                    'barcode'  => $barcode,
+                    'qty'      => 0,
+                    'location' => $row['location'] ?? null,
+                    'bin'      => $row['bin']      ?? null,
+                ];
+            }
+
+            $this->accumulated[$barcode]['qty'] += $qty;
         }
     }
 }

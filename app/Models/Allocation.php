@@ -31,4 +31,9 @@ class Allocation extends Model
     {
         return $this->hasMany(AllocationItem::class);
     }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(AllocationStatusHistory::class)->orderBy('created_at', 'desc');
+    }
 }

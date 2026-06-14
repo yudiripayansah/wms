@@ -35,8 +35,8 @@ class StocksRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                TextColumn::make('location')->label(__('general.location'))->sortable(),
                 TextColumn::make('bin')->label(__('general.bin'))->sortable(),
+                TextColumn::make('location')->label(__('general.location'))->sortable(),
                 TextColumn::make('qty')->label(__('general.qty'))->sortable(),
             ])
             ->headerActions([

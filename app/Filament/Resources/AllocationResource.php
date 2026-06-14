@@ -5,12 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AllocationResource\Pages;
 use App\Imports\AllocationItemPreviewImport;
 use App\Models\Allocation;
+use App\Models\AllocationStatusHistory;
 use App\Models\Inventory;
 use App\Models\Stock;
-use App\Models\Transaction;
 use App\Models\User;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -23,6 +24,8 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\HtmlString;
 use Maatwebsite\Excel\Facades\Excel;
 
 class AllocationResource extends Resource
@@ -49,29 +52,34 @@ class AllocationResource extends Resource
 
     public static function canCreate(): bool
     {
-        return ! (auth()->user()?->isAllocator() ?? true);
+        return ! (current_user()?->isAllocator() ?? true);
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return ! (auth()->user()?->isAllocator() ?? true);
+        if (in_array($record->status, ['COMPLETED', 'CANCELED'])) return false;
+
+        $user = current_user();
+        if ($user?->isSuperAdmin()) return true;
+        if ($user?->isAllocator()) return $record->status === 'PROCESSING';
+        return $record->status === 'PENDING';
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 
-        if (auth()->user()?->isAllocator()) {
+        if (current_user()?->isAllocator()) {
             $query->where('user_id', auth()->id());
         }
 
@@ -95,18 +103,19 @@ class AllocationResource extends Resource
                         'PROCESSING' => __('allocation.status.processing'),
                         'FINISHED'   => __('allocation.status.finished'),
                         'COMPLETED'  => __('allocation.status.completed'),
+                        'CANCELED'   => __('allocation.status.canceled'),
                     ])
                     ->default('PENDING')
                     ->required()
-                    ->disabled(fn($record) => $record?->status === 'COMPLETED'),
+                    ->disabled(), // status changed via actions only
 
                 Select::make('user_id')
                     ->label(__('allocation.assign_allocator'))
                     ->options(fn() => User::where('role', 'allocator')->pluck('name', 'id'))
-                    ->nullable()
+                    ->required()
                     ->searchable()
                     ->placeholder(__('allocation.not_assigned'))
-                    ->visible(fn() => ! (auth()->user()?->isAllocator() ?? true)),
+                    ->visible(fn() => ! (current_user()?->isAllocator() ?? true)),
 
                 Section::make(__('allocation.shipment_info'))
                     ->description(__('allocation.shipment_desc'))
@@ -151,30 +160,109 @@ class AllocationResource extends Resource
                     ->live()
                     ->dehydrated(false)
                     ->columnSpan('full')
-                    ->visible(fn($record) => $record?->status !== 'COMPLETED')
+                    ->visible(fn($record) =>
+                        ! in_array($record?->status, ['PROCESSING', 'FINISHED', 'COMPLETED', 'CANCELED'])
+                        && ! (current_user()?->isAllocator() ?? false))
                     ->afterStateUpdated(function ($state, $livewire) {
                         if (! $state) return;
+                        set_time_limit(0);
                         ini_set('memory_limit', '512M');
+
                         $import = new AllocationItemPreviewImport();
                         Excel::import($import, $state->getRealPath());
-                        $livewire->allocationRows = $import->rows;
+
+                        $barcodes    = array_keys($import->accumulated);
+                        $inventories = Inventory::whereIn('barcode', $barcodes)
+                            ->get(['barcode', 'article', 'sku', 'color', 'size'])
+                            ->keyBy('barcode');
+
+                        $stockTotals = Stock::selectRaw('barcode, SUM(qty) as total')
+                            ->whereIn('barcode', $barcodes)
+                            ->groupBy('barcode')
+                            ->pluck('total', 'barcode');
+
+                        $reservedMap = DB::table('allocation_items')
+                            ->join('allocations', 'allocations.id', '=', 'allocation_items.allocation_id')
+                            ->whereIn('allocations.status', ['PROCESSING', 'FINISHED'])
+                            ->whereIn('allocation_items.barcode', $barcodes)
+                            ->selectRaw('allocation_items.barcode, SUM(allocation_items.qty) as reserved')
+                            ->groupBy('allocation_items.barcode')
+                            ->pluck('reserved', 'allocation_items.barcode');
+
+                        $livewire->allocationRows = collect($import->accumulated)
+                            ->map(function ($data) use ($inventories, $stockTotals, $reservedMap) {
+                                $inv       = $inventories->get($data['barcode']);
+                                $available = max(0, ($stockTotals[$data['barcode']] ?? 0) - ($reservedMap[$data['barcode']] ?? 0));
+                                return [
+                                    'barcode'   => $data['barcode'],
+                                    'article'   => $inv?->article ?? '',
+                                    'sku'       => $inv?->sku     ?? '',
+                                    'color'     => $inv?->color   ?? '',
+                                    'size'      => $inv?->size    ?? '',
+                                    'qty'       => $data['qty'],
+                                    'location'  => $data['location'] ?? null,
+                                    'bin'       => $data['bin']      ?? null,
+                                    'exceed'    => $data['qty'] > $available,
+                                    'available' => $available,
+                                ];
+                            })
+                            ->values()
+                            ->toArray();
+
+                        $livewire->totalAllocationRows = $import->totalRawRows;
                     }),
 
                 View::make('filament.allocation-items-table')
                     ->columnSpan('full')
                     ->viewData([
                         'inventoryMap' => Inventory::orderBy('barcode')
-                            ->pluck('article', 'barcode')
-                            ->toArray(),
-                        'stockMap' => Stock::select('barcode', 'location', 'bin')
-                            ->orderByDesc('qty')
-                            ->get()
-                            ->unique('barcode')
-                            ->mapWithKeys(fn($s) => [
-                                $s->barcode => ['location' => $s->location, 'bin' => $s->bin],
+                            ->get(['barcode', 'article', 'sku', 'color', 'size'])
+                            ->keyBy('barcode')
+                            ->map(fn($inv) => [
+                                'article' => $inv->article,
+                                'sku'     => $inv->sku,
+                                'color'   => $inv->color,
+                                'size'    => $inv->size,
                             ])
                             ->toArray(),
+                        'stockTotals' => Stock::selectRaw('barcode, SUM(qty) as total')
+                            ->groupBy('barcode')
+                            ->pluck('total', 'barcode')
+                            ->toArray(),
+                        'reservedMap' => DB::table('allocation_items')
+                            ->join('allocations', 'allocations.id', '=', 'allocation_items.allocation_id')
+                            ->whereIn('allocations.status', ['PROCESSING', 'FINISHED'])
+                            ->selectRaw('allocation_items.barcode, SUM(allocation_items.qty) as reserved')
+                            ->groupBy('allocation_items.barcode')
+                            ->pluck('reserved', 'allocation_items.barcode')
+                            ->toArray(),
+                        'stockBreakdown' => Stock::where('qty', '>', 0)
+                            ->orderByDesc('qty')
+                            ->get(['barcode', 'location', 'bin', 'qty'])
+                            ->groupBy('barcode')
+                            ->map(fn($g) => $g->map(fn($s) => [
+                                'l' => $s->location,
+                                'b' => $s->bin,
+                                'q' => (int) $s->qty,
+                            ])->values())
+                            ->toArray(),
                     ]),
+
+                Section::make(__('allocation.history_title'))
+                    ->columnSpan('full')
+                    ->schema([
+                        Placeholder::make('status_history')
+                            ->label('')
+                            ->columnSpan('full')
+                            ->content(function (?Allocation $record): HtmlString {
+                                if (! $record) return new HtmlString('');
+                                $histories = $record->statusHistories()->with('user')->get();
+                                return new HtmlString(
+                                    view('filament.allocation-status-history', ['histories' => $histories])->render()
+                                );
+                            }),
+                    ])
+                    ->visible(fn(?Allocation $record) => $record !== null),
             ]);
     }
 
@@ -228,7 +316,7 @@ class AllocationResource extends Resource
                 Tables\Actions\ViewAction::make()
                     ->iconButton()
                     ->tooltip(__('general.view'))
-                    ->visible(fn(Allocation $record) => auth()->user()?->isAllocator() ?? false),
+                    ->visible(fn() => current_user()?->isAllocator() ?? false),
 
                 Tables\Actions\Action::make('preview_location')
                     ->iconButton()
@@ -253,9 +341,18 @@ class AllocationResource extends Resource
                     ->color('warning')
                     ->requiresConfirmation()
                     ->visible(fn(Allocation $record) =>
-                        $record->status === 'PENDING' && ! (auth()->user()?->isAllocator() ?? true))
-                    ->action(fn(Allocation $record) => $record->update(['status' => 'PROCESSING']))
-                    ->successNotificationTitle(__('allocation.confirmed_notif')),
+                        $record->status === 'PENDING'
+                        && ((current_user()?->isAllocator() ?? false) || (current_user()?->isSuperAdmin() ?? false)))
+                    ->action(function (Allocation $record) {
+                        $record->update(['status' => 'PROCESSING']);
+                        AllocationStatusHistory::create([
+                            'allocation_id' => $record->id,
+                            'user_id'       => auth()->id(),
+                            'from_status'   => 'PENDING',
+                            'to_status'     => 'PROCESSING',
+                        ]);
+                        Notification::make()->title(__('allocation.confirmed_notif'))->success()->send();
+                    }),
 
                 Tables\Actions\Action::make('finish')
                     ->iconButton()
@@ -263,10 +360,27 @@ class AllocationResource extends Resource
                     ->icon('heroicon-o-flag')
                     ->color('info')
                     ->requiresConfirmation()
+                    ->modalHeading(__('allocation.finish_action'))
+                    ->form([
+                        \Filament\Forms\Components\Textarea::make('notes')
+                            ->label('Catatan')
+                            ->placeholder('Catatan opsional...')
+                            ->rows(3),
+                    ])
                     ->visible(fn(Allocation $record) =>
-                        $record->status === 'PROCESSING' && ! (auth()->user()?->isAllocator() ?? true))
-                    ->action(fn(Allocation $record) => $record->update(['status' => 'FINISHED']))
-                    ->successNotificationTitle(__('allocation.finished_notif')),
+                        $record->status === 'PROCESSING'
+                        && ((current_user()?->isAllocator() ?? false) || (current_user()?->isSuperAdmin() ?? false)))
+                    ->action(function (Allocation $record, array $data) {
+                        $record->update(['status' => 'FINISHED']);
+                        AllocationStatusHistory::create([
+                            'allocation_id' => $record->id,
+                            'user_id'       => auth()->id(),
+                            'from_status'   => 'PROCESSING',
+                            'to_status'     => 'FINISHED',
+                            'notes'         => $data['notes'] ?? null,
+                        ]);
+                        Notification::make()->title(__('allocation.finished_notif'))->success()->send();
+                    }),
 
                 Tables\Actions\Action::make('complete')
                     ->iconButton()
@@ -275,52 +389,209 @@ class AllocationResource extends Resource
                     ->color('success')
                     ->requiresConfirmation()
                     ->visible(fn(Allocation $record) =>
-                        $record->status === 'FINISHED' && ! (auth()->user()?->isAllocator() ?? true))
+                        $record->status === 'FINISHED' && ! (current_user()?->isAllocator() ?? true))
                     ->action(function (Allocation $record) {
-                        $allocation = $record->load('items');
-                        $sessionId  = now()->timestamp;
+                        $now       = now()->toDateTimeString();
+                        $sessionId = (string) now()->timestamp;
+                        $txRecords = [];
+                        $shortages = [];
 
-                        foreach ($allocation->items as $item) {
-                            Transaction::create([
-                                'session_id' => $sessionId,
-                                'barcode'    => $item->barcode,
-                                'qty'        => $item->qty,
-                                'location'   => $item->location,
-                                'bin'        => $item->bin,
-                                'type'       => 'OUT',
-                                'status'     => 'OK',
-                                'remarks'    => 'Allocation: ' . $allocation->session_id,
-                            ]);
+                        try {
+                            DB::transaction(function () use ($record, $now, $sessionId, &$txRecords, &$shortages) {
+                                $barcodes        = $record->items->pluck('barcode')->unique()->toArray();
+                                $stocksByBarcode = Stock::whereIn('barcode', $barcodes)
+                                    ->lockForUpdate()
+                                    ->orderByDesc('qty')
+                                    ->get()
+                                    ->groupBy('barcode')
+                                    ->map(fn($g) => $g->values());
 
-                            $stock = Stock::where('barcode', $item->barcode)
-                                ->where('location', $item->location)
-                                ->where('bin', $item->bin)
-                                ->first();
+                                foreach ($record->items as $item) {
+                                    $avail = ($stocksByBarcode->get($item->barcode) ?? collect())->sum('qty');
+                                    if ($avail < $item->qty) {
+                                        $shortages[] = "Barcode {$item->barcode}: tersedia {$avail}, dibutuhkan {$item->qty}";
+                                    }
+                                }
 
-                            if ($stock) {
-                                $stock->decrement('qty', $item->qty);
+                                if (! empty($shortages)) throw new \RuntimeException('insufficient_stock');
+
+                                foreach ($record->items as $item) {
+                                    $remaining  = (int) $item->qty;
+                                    $itemStocks = $stocksByBarcode->get($item->barcode, collect());
+
+                                    foreach ($itemStocks as $stock) {
+                                        if ($remaining <= 0) break;
+                                        $deduct = min($remaining, (int) $stock->qty);
+                                        if ($deduct <= 0) continue;
+                                        $stock->decrement('qty', $deduct);
+                                        $remaining -= $deduct;
+                                        $txRecords[] = [
+                                            'session_id' => $sessionId,
+                                            'barcode'    => $item->barcode,
+                                            'qty'        => $deduct,
+                                            'location'   => $stock->location,
+                                            'bin'        => $stock->bin,
+                                            'type'       => 'OUT',
+                                            'status'     => 'OK',
+                                            'remarks'    => 'Allocation: ' . $record->session_id,
+                                            'created_at' => $now,
+                                            'updated_at' => $now,
+                                        ];
+                                    }
+                                }
+
+                                foreach (array_chunk($txRecords, 500) as $chunk) {
+                                    DB::table('transactions')->insert($chunk);
+                                }
+
+                                $record->update(['status' => 'COMPLETED']);
+
+                                AllocationStatusHistory::create([
+                                    'allocation_id' => $record->id,
+                                    'user_id'       => auth()->id(),
+                                    'from_status'   => 'FINISHED',
+                                    'to_status'     => 'COMPLETED',
+                                ]);
+                            });
+                        } catch (\RuntimeException $e) {
+                            if ($e->getMessage() === 'insufficient_stock') {
+                                Notification::make()
+                                    ->title('Stok tidak mencukupi')
+                                    ->body(implode("\n", $shortages))
+                                    ->danger()->persistent()->send();
+                                return;
                             }
+                            throw $e;
                         }
-
-                        $record->update(['status' => 'COMPLETED']);
 
                         Notification::make()
                             ->title(__('allocation.completed_notif'))
-                            ->body(__('transactions.items_recorded', ['count' => $allocation->items->count()]))
-                            ->success()
-                            ->send();
+                            ->body(__('transactions.items_recorded', ['count' => count($txRecords)]))
+                            ->success()->send();
+                    }),
+
+                Tables\Actions\Action::make('revert')
+                    ->iconButton()
+                    ->tooltip(__('allocation.revert_action'))
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading(__('allocation.revert_action'))
+                    ->modalDescription(__('allocation.revert_confirm'))
+                    ->form([
+                        \Filament\Forms\Components\Textarea::make('notes')
+                            ->label(__('allocation.revert_notes'))
+                            ->rows(3),
+                    ])
+                    ->visible(fn(Allocation $record) =>
+                        $record->status === 'FINISHED'
+                        && ! (current_user()?->isAllocator() ?? true))
+                    ->action(function (Allocation $record, array $data) {
+                        $record->update(['status' => 'PROCESSING']);
+                        AllocationStatusHistory::create([
+                            'allocation_id' => $record->id,
+                            'user_id'       => auth()->id(),
+                            'from_status'   => 'FINISHED',
+                            'to_status'     => 'PROCESSING',
+                            'notes'         => $data['notes'] ?? null,
+                        ]);
+                        Notification::make()->title(__('allocation.reverted_notif'))->success()->send();
+                    }),
+
+                Tables\Actions\Action::make('cancel')
+                    ->iconButton()
+                    ->tooltip(__('allocation.cancel_action'))
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading(__('allocation.cancel_action'))
+                    ->modalDescription(__('allocation.cancel_confirm'))
+                    ->visible(fn(Allocation $record) =>
+                        $record->status === 'COMPLETED' && ! (current_user()?->isAllocator() ?? true))
+                    ->action(function (Allocation $record) {
+                        $now       = now()->toDateTimeString();
+                        $sessionId = (string) now()->timestamp;
+
+                        DB::transaction(function () use ($record, $now, $sessionId) {
+                            $outTxns  = DB::table('transactions')
+                                ->where('type', 'OUT')
+                                ->where('remarks', 'Allocation: ' . $record->session_id)
+                                ->get();
+
+                            $barcodes = $outTxns->pluck('barcode')->unique()->toArray();
+                            $stocks   = Stock::whereIn('barcode', $barcodes)
+                                ->lockForUpdate()
+                                ->get()
+                                ->keyBy(fn($s) => $s->barcode . '|' . ($s->location ?? '') . '|' . ($s->bin ?? ''));
+
+                            $inRecords = [];
+
+                            foreach ($outTxns as $txn) {
+                                $key   = $txn->barcode . '|' . ($txn->location ?? '') . '|' . ($txn->bin ?? '');
+                                $stock = $stocks->get($key);
+
+                                if ($stock) {
+                                    $stock->increment('qty', $txn->qty);
+                                } else {
+                                    Stock::create([
+                                        'barcode'    => $txn->barcode,
+                                        'location'   => $txn->location,
+                                        'bin'        => $txn->bin,
+                                        'qty'        => $txn->qty,
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ]);
+                                }
+
+                                $inRecords[] = [
+                                    'session_id' => $sessionId,
+                                    'barcode'    => $txn->barcode,
+                                    'qty'        => $txn->qty,
+                                    'location'   => $txn->location,
+                                    'bin'        => $txn->bin,
+                                    'type'       => 'IN',
+                                    'status'     => 'OK',
+                                    'remarks'    => 'Reversal: Allocation ' . $record->session_id,
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ];
+                            }
+
+                            foreach (array_chunk($inRecords, 500) as $chunk) {
+                                DB::table('transactions')->insert($chunk);
+                            }
+
+                            $record->update(['status' => 'CANCELED']);
+
+                            AllocationStatusHistory::create([
+                                'allocation_id' => $record->id,
+                                'user_id'       => auth()->id(),
+                                'from_status'   => 'COMPLETED',
+                                'to_status'     => 'CANCELED',
+                            ]);
+                        });
+
+                        Notification::make()
+                            ->title(__('allocation.canceled_notif'))
+                            ->success()->send();
                     }),
 
                 Tables\Actions\EditAction::make()
                     ->iconButton()
                     ->tooltip(__('general.edit'))
-                    ->visible(fn() => ! (auth()->user()?->isAllocator() ?? true)),
+                    ->visible(fn(Allocation $record) =>
+                        ! in_array($record->status, ['COMPLETED', 'CANCELED'])
+                        && (
+                            (current_user()?->isSuperAdmin() ?? false)
+                            || ($record->status === 'PENDING' && ! (current_user()?->isAllocator() ?? true))
+                            || ($record->status === 'PROCESSING' && (current_user()?->isAllocator() ?? false))
+                        )),
 
                 Tables\Actions\DeleteAction::make()
                     ->iconButton()
                     ->tooltip(__('general.delete'))
                     ->visible(fn(Allocation $record) =>
-                        $record->status !== 'COMPLETED' && (auth()->user()?->isSuperAdmin() ?? false)),
+                        $record->status !== 'COMPLETED' && (current_user()?->isSuperAdmin() ?? false)),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

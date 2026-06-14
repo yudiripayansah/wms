@@ -2,52 +2,91 @@
 
 namespace App\Imports;
 
-use App\Models\Inventory;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class InventoriesImport implements ToCollection, WithHeadingRow
+class InventoriesImport implements ToCollection, WithHeadingRow, WithChunkReading
 {
     use SkipsErrors, SkipsFailures;
 
-    public $success = 0;
-    public $updated = 0;
-    public $failed  = 0;
+    public int $success = 0;
+    public int $updated = 0;
+    public int $failed  = 0;
 
-    public function collection(Collection $rows)
+    public function chunkSize(): int
     {
-        foreach ($rows as $row) {
-            $row = array_change_key_case($row->toArray(), CASE_LOWER);
-            $row = array_map(fn($v) => is_string($v) ? trim($v) : $v, $row);
+        return 1000;
+    }
 
+    public function collection(Collection $rows): void
+    {
+        $now = now()->toDateTimeString();
+
+        $normalized = $rows->map(function ($row) {
+            $r = array_change_key_case($row->toArray(), CASE_LOWER);
+            return array_map(fn($v) => trim((string) $v), $r);
+        })->filter(fn($r) => $r['barcode'] !== '');
+
+        if ($normalized->isEmpty()) return;
+
+        $barcodes = $normalized->pluck('barcode')->unique()->values();
+
+        $existingBarcodes = DB::table('inventories')
+            ->whereIn('barcode', $barcodes)
+            ->pluck('barcode', 'barcode');
+
+        $toInsert = [];
+        $toUpdate = [];
+
+        foreach ($normalized as $row) {
+            $barcode = $row['barcode'];
+            $payload = [
+                'barcode'    => $barcode,
+                'brand'      => $row['brand']   !== '' ? $row['brand']   : null,
+                'sku'        => $row['sku']      !== '' ? $row['sku']     : null,
+                'article'    => $row['article']  !== '' ? $row['article'] : null,
+                'color'      => $row['color']    !== '' ? $row['color']   : null,
+                'size'       => $row['size']     !== '' ? $row['size']    : null,
+                'updated_at' => $now,
+            ];
+
+            if ($existingBarcodes->has($barcode)) {
+                $toUpdate[] = $payload;
+                $this->updated++;
+            } else {
+                $toInsert[] = array_merge($payload, ['created_at' => $now]);
+                $this->success++;
+            }
+        }
+
+        foreach (array_chunk($toInsert, 500) as $chunk) {
             try {
-                if (empty($row['barcode'])) {
-                    $this->failed++;
-                    continue;
-                }
+                $inserted = DB::table('inventories')->insertOrIgnore($chunk);
+                // insertOrIgnore skips rows that violate unique constraint (within-chunk duplicates)
+                $skipped = count($chunk) - $inserted;
+                $this->failed   += $skipped;
+                $this->success  -= $skipped;
+            } catch (\Throwable) {
+                $this->failed   += count($chunk);
+                $this->success  -= count($chunk);
+            }
+        }
 
-                $data = [
-                    'brand'   => $row['brand']   ?? null,
-                    'sku'     => $row['sku']      ?? null,
-                    'article' => $row['article']  ?? null,
-                    'color'   => $row['color']    ?? null,
-                    'size'    => $row['size']      ?? null,
-                ];
-
-                $inventory = Inventory::where('barcode', $row['barcode'])->first();
-
-                if ($inventory) {
-                    $inventory->update($data);
-                    $this->updated++;
-                } else {
-                    Inventory::create(array_merge(['barcode' => $row['barcode']], $data));
-                    $this->success++;
-                }
-            } catch (\Throwable $e) {
-                $this->failed++;
+        foreach (array_chunk($toUpdate, 500) as $chunk) {
+            try {
+                DB::table('inventories')->upsert(
+                    $chunk,
+                    ['barcode'],
+                    ['brand', 'sku', 'article', 'color', 'size', 'updated_at']
+                );
+            } catch (\Throwable) {
+                $this->failed   += count($chunk);
+                $this->updated  -= count($chunk);
             }
         }
     }

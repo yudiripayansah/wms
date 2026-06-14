@@ -42,27 +42,27 @@ class TransactionOpnameResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return ! (auth()->user()?->isAllocator() ?? true);
+        return ! (current_user()?->isAllocator() ?? true);
     }
 
     public static function canCreate(): bool
     {
-        return ! (auth()->user()?->isAllocator() ?? true);
+        return ! (current_user()?->isAllocator() ?? true);
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function getEloquentQuery(): Builder
@@ -129,8 +129,8 @@ class TransactionOpnameResource extends Resource
                 TextColumn::make('inventory.color')->label(__('general.color')),
                 TextColumn::make('inventory.size')->label(__('general.size')),
                 TextColumn::make('qty')->label(__('general.qty')),
-                TextColumn::make('location')->label(__('general.location')),
                 TextColumn::make('bin')->label(__('general.bin')),
+                TextColumn::make('location')->label(__('general.location')),
                 TextColumn::make('type')->label(__('general.type')),
                 TextColumn::make('status')->label(__('general.status')),
                 TextColumn::make('created_at')->label(__('transactions.date'))->date('d/m/Y'),

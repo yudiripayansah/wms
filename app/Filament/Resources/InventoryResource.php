@@ -3,11 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Exports\InventoriesExport;
+use App\Exports\InventoryImportTemplateExport;
 use App\Filament\Pages\InventoryTransactionHistory;
 use App\Filament\Resources\InventoryResource\Pages;
 use App\Filament\Resources\InventoryResource\RelationManagers\StocksRelationManager;
 use App\Imports\InventoriesImport;
 use App\Models\Inventory;
+use Filament\Forms\Components\Actions as FormActions;
+use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
@@ -39,27 +42,27 @@ class InventoryResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return ! (auth()->user()?->isAllocator() ?? true);
+        return ! (current_user()?->isAllocator() ?? true);
     }
 
     public static function canCreate(): bool
     {
-        return ! (auth()->user()?->isAllocator() ?? true);
+        return ! (current_user()?->isAllocator() ?? true);
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() ?? false;
+        return current_user()?->isSuperAdmin() ?? false;
     }
 
     public static function getEloquentQuery(): Builder
@@ -153,6 +156,17 @@ class InventoryResource extends Resource
                 Action::make('import_excel')
                     ->label(__('general.import_excel'))
                     ->form([
+                        FormActions::make([
+                            FormAction::make('download_template')
+                                ->label(__('general.download_template'))
+                                ->icon('heroicon-o-arrow-down-tray')
+                                ->color('gray')
+                                ->action(fn() => Excel::download(
+                                    new InventoryImportTemplateExport(),
+                                    'template-import-inventory.xlsx'
+                                )),
+                        ])->fullWidth(),
+
                         FileUpload::make('file')
                             ->required()
                             ->directory('imports')
@@ -161,6 +175,8 @@ class InventoryResource extends Resource
                             ]),
                     ])
                     ->action(function (array $data) {
+                        set_time_limit(0);
+                        ini_set('memory_limit', '512M');
                         $import = new InventoriesImport();
                         Excel::import($import, storage_path('app/public/' . $data['file']));
 

@@ -2,15 +2,23 @@
 
 namespace App\Filament\Resources\AllocationResource\Pages;
 
+use App\Concerns\HasAllocationRows;
 use App\Filament\Resources\AllocationResource;
-use App\Models\AllocationItem;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateAllocation extends CreateRecord
 {
+    use HasAllocationRows;
+
     protected static string $resource = AllocationResource::class;
 
     public array $allocationRows = [];
+
+    public function mount(): void
+    {
+        parent::mount();
+        $this->resolveAllocationPermissions('PENDING');
+    }
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -18,18 +26,14 @@ class CreateAllocation extends CreateRecord
         return $data;
     }
 
+    protected function beforeCreate(): void
+    {
+        $this->validateRowsBeforeSave();
+        $this->checkAndHaltOnStockExceed();
+    }
+
     protected function afterCreate(): void
     {
-        foreach ($this->allocationRows as $row) {
-            if (empty($row['barcode'])) continue;
-
-            AllocationItem::create([
-                'allocation_id' => $this->record->id,
-                'barcode'       => $row['barcode'],
-                'qty'           => (int) ($row['qty'] ?? 0),
-                'location'      => $row['location'] ?? null,
-                'bin'           => $row['bin'] ?? null,
-            ]);
-        }
+        $this->saveAllocationItems($this->record->id);
     }
 }
