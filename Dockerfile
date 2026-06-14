@@ -33,8 +33,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first for layer caching
+# Copy composer files and patches (needed by cweagans/composer-patches)
 COPY composer.json composer.lock ./
+COPY patches/ ./patches/
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
