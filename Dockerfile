@@ -38,8 +38,10 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 COPY patches/ ./patches/
 
-# git init needed so cweagans/composer-patches can use "git apply" patcher
-RUN git init && composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+# Skip patches plugin; apply PHP 8.4 compat patches manually after install
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-plugins --no-interaction && \
+    patch -p1 -d vendor/filament/support < patches/filament-support-php84-id-property.patch && \
+    patch -p1 -d vendor/filament/actions < patches/filament-actions-php84-getclass.patch
 
 # Copy the rest of the application
 COPY . .
