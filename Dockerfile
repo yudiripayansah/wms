@@ -39,10 +39,13 @@ COPY composer.json composer.lock ./
 COPY patches/ ./patches/
 
 # Skip patches plugin; apply PHP 8.4 compat patches manually after install
+# patch exits 2 due to missing trailing context in patch file, but the hunk still applies
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-plugins --no-interaction && \
-    patch -p1 -d vendor/filament/support < patches/filament-support-php84-id-property.patch && \
-    sed -i 's/\. get_class(\$action) \./. (is_object($action) ? get_class($action) : gettype($action)) ./g' \
-        vendor/filament/actions/src/Concerns/InteractsWithActions.php
+    (patch -p1 -d vendor/filament/support < patches/filament-support-php84-id-property.patch; true) && \
+    grep -q "method_exists.*getId" vendor/filament/support/src/Concerns/ResolvesDynamicLivewireProperties.php && \
+    sed -i "s/\. get_class(\$action) \./. (is_object(\$action) ? get_class(\$action) : gettype(\$action)) ./g" \
+        vendor/filament/actions/src/Concerns/InteractsWithActions.php && \
+    grep -q "is_object" vendor/filament/actions/src/Concerns/InteractsWithActions.php
 
 # Copy the rest of the application
 COPY . .
