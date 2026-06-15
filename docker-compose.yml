@@ -6,6 +6,7 @@ services:
     container_name: wms_app
     restart: unless-stopped
     volumes:
+      - ./.env:/var/www/html/.env:ro
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
     environment:
