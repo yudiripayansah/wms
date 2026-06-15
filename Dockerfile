@@ -38,8 +38,8 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 COPY patches/ ./patches/
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+# git init needed so cweagans/composer-patches can use "git apply" patcher
+RUN git init && composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
 
 # Copy the rest of the application
 COPY . .
