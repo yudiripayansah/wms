@@ -34,18 +34,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files and patches (needed by cweagans/composer-patches)
+# Copy composer files and PHP 8.4 fix script
 COPY composer.json composer.lock ./
-COPY patches/ ./patches/
+COPY docker/fix-php84.py ./docker/fix-php84.py
 
-# Skip patches plugin; apply PHP 8.4 compat patches manually after install
-# patch exits 2 due to missing trailing context in patch file, but the hunk still applies
+# Install PHP dependencies then apply PHP 8.4 compat fixes via Python script
 RUN composer install --no-dev --optimize-autoloader --no-scripts --no-plugins --no-interaction && \
-    (patch -p1 -d vendor/filament/support < patches/filament-support-php84-id-property.patch; true) && \
-    grep -q "method_exists.*getId" vendor/filament/support/src/Concerns/ResolvesDynamicLivewireProperties.php && \
-    sed -i "s/\. get_class(\$action) \./. (is_object(\$action) ? get_class(\$action) : gettype(\$action)) ./g" \
-        vendor/filament/actions/src/Concerns/InteractsWithActions.php && \
-    grep -q "is_object" vendor/filament/actions/src/Concerns/InteractsWithActions.php
+    python3 docker/fix-php84.py
 
 # Copy the rest of the application
 COPY . .
